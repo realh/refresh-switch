@@ -22,7 +22,7 @@ function buildActionGroup(displays) {
         const states = disp.modes.map((_, i) =>
                 GLib.Variant.new_string(`${i}`));
         const action = Gio.SimpleAction.new_stateful(`disp_${dn}`,
-                null, states[disp.current_mode]);
+                vt, states[disp.current_mode]);
         action.set_state_hint(GLib.Variant.new_array(vt, states));
         action.connect("change-state", (_, value) => {
             // TODO: Check if mode has really changed and switch it
