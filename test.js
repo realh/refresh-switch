@@ -18,7 +18,7 @@ function directoryOfThisScript() {
 imports.searchPath.push(directoryOfThisScript());
 
 //const DisplayConfig = imports.dispconf;
-const PopDown = imports.popdown;
+const Prefs = imports.prefs;
 
 /*
 const mainLoop = new GLib.MainLoop(null, false);
@@ -38,17 +38,14 @@ class SwitchRefreshTestApp extends Gtk.Application {
     _init() {
         super._init({application_id: "switch-refresh.realh.co.uk",
                 flags: Gio.ApplicationFlags.FLAGS_NONE});
+        Prefs.init();
     }
 
     vfunc_activate() {
         this.window = new Gtk.ApplicationWindow({application: this});
-        this.button = new Gtk.MenuButton();
-        this.window.add(this.button);
+        this.content = Prefs.buildPrefsWidget();
+        this.window.add(this.content);
         this.window.show_all();
-        PopDown.enable(this.button).then(popover => {
-            log("Attaching popover to button");
-            this.button.set_popover(popover);
-        });
     }
 });
 

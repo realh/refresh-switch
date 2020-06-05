@@ -69,6 +69,8 @@ let displays = [];
 let monitorsChangedTag = 0;
 
 function enable() {
+    if (displayConfigDbus)
+        return;
     displayConfigDbus = new DisplayConfigProxy(Gio.DBus.session,
         "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig");
     monitorsChangedTag = displayConfigDbus.connectSignal("MonitorsChanged",
@@ -80,6 +82,8 @@ function enable() {
 }
 
 function disable() {
+    if (!displayConfigDbus)
+        return;
     displayConfigDbus.disconnectSignal(monitorsChangedTag);
     displayConfigDbus = null;
     displayConfigResources = {};
@@ -111,6 +115,7 @@ function isRoundable(n) {
 }
 
 function processDisplayConfig() {
+    displays = [];
     for (const output of displayConfigResources.outputs) {
         const current_crtc = output[2];
         if (current_crtc == -1)
