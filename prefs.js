@@ -1,36 +1,12 @@
 const {Gio, GLib, GObject, Gtk} = imports.gi;
 const DispConf = imports.dispconf;
+const {logError, logObject} = imports.util;
 
 var [init, buildPrefsWidget] = (function() {
 
 let oldDisplays = null;
 let prefsWidget = null;
 const radios = new Map();
-
-function logObject(o, indent) {
-    if (!indent)
-        indent = "";
-    let s = "{\n";
-    const nested = indent + "  ";
-    for (const k of Object.getOwnPropertyNames(o)) {
-        s += `${nested}${k}: `;
-        const v = o[k];
-        if (typeof v == "string") {
-            s += `"${v}"`;
-        } else if (typeof v == "number" || !v || v === true) {
-            s += `${v}`;
-        } else {
-            s += logObject(v, nested);
-        }
-        s += ",\n";
-    }
-    s += indent + '}';
-    return s;
-}
-
-function logError(error, detail) {
-    log(`${detail}:\n${logObject(error)}`);
-}
 
 function init() {
     log("DispConf.init()");
@@ -67,21 +43,21 @@ function populatePrefsWidget(displays) {
             prefsWidget.pack_start(Gtk.Label.new(`${disp.name}`),
                     false, false, 0);
             let group = null;
-            log(`Display ${disp.name}'s current_mode is ${disp.current_mode}`);
             for (const rn in disp.refresh) {
                 const label = `${disp.refresh[rn]}Hz`;
-                const radio = rn ?
-                    Gtk.RadioButton.new_with_label_from_widget(group, label) :
-                    Gtk.RadioButton.new_with_label(null, label);
+                const radio = 
+                    Gtk.RadioButton.new_with_label_from_widget(group, label);
                 radios.set(`${dn},${rn}`, radio);
-                if (!rn)
+                if (rn == 0)
                     group = radio;
                 radio.set_active(rn == disp.current_mode);
-                log(`  Radio ${rn} active(${rn == disp.current_mode}): ` +
-                        `${radio.get_active()}`);
                 radio.connect("toggled", r => {
                     if (r.get_active()) {
                         log(`Display ${dn} ${disp.name} ${rn} toggled on`);
+                        if (displays[dn].current_mode != rn) {
+                            DispConf.changeMode(dn, rn);
+                        }
+                            
                     }
                 });
                 prefsWidget.pack_start(radio, false, false, 0);

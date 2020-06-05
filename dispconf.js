@@ -2,7 +2,7 @@ const Gio = imports.gi.Gio;
 
 var onDisplayConfigChanged = null;
 
-var [getDisplays, enable, disable] = (function() {
+var [getDisplays, enable, disable, changeMode] = (function() {
 
 let mainLoop = null;    // For debugging outside of gnome-shell
 
@@ -90,6 +90,13 @@ function disable() {
     displays = [];
 }
 
+function resourceArray(a) {
+    return a.reduce((result, v, i) => {
+        result[i] = v;
+        return result;
+    }, []);
+}
+
 function updateDisplayConfig() {
     displayConfigResources = {};
     displays = [];
@@ -98,13 +105,27 @@ function updateDisplayConfig() {
         {
             if (error) {
                 reject(error);
+                return;
+            }
+            if (!resources || !resources.length || resources.length < 4) {
+                reject(new Error(`Invalid resources ${resources}`));
+                return;
             }
             displayConfigResources.serial = resources[0];
-            displayConfigResources.crtcs = resources[1];
-            displayConfigResources.outputs = resources[2];
-            displayConfigResources.modes = resources[3];
+            displayConfigResources.crtcs = resourceArray(resources[1]);
+            displayConfigResources.outputs = resourceArray(resources[2]);
+            displayConfigResources.modes = resourceArray(resources[3]);
+            let s = "";
+            for (const n of displayConfigResources.outputs)
+                s += `${n},`;
+            log(`for..of on fake outputs: ${s}`);
             // Not interested in max_screen_width/_height
-            processDisplayConfig();
+            try {
+                processDisplayConfig();
+            } catch (error) {
+                reject(error);
+                return;
+            }
             resolve(displays);
         });
     });
@@ -117,9 +138,11 @@ function isRoundable(n) {
 function processDisplayConfig() {
     displays = [];
     for (const output of displayConfigResources.outputs) {
+        log(`Processing output ${output[0]}`);
         const current_crtc = output[2];
         if (current_crtc == -1)
             continue;
+        log(`current_crtc ${current_crtc}`);
         let current_mode = displayConfigResources.crtcs[current_crtc][7];
         if (current_mode == -1)
             continue;
@@ -179,6 +202,34 @@ function getDisplays() {
         return updateDisplayConfig();
 }
 
-return [getDisplays, enable, disable];
+function changeMode(display, mode) {
+    log(`Changing mode of ${display} ${displays[display].name} ` +
+            `to mode with refresh index ${mode}`);
+    displays[display].current_mode = mode;
+    const modeId = displays[display].modes[mode];
+    log(`local mode ${mode} corresponds to mode id ${modeId}`);
+    const output = displayConfigResources.outputs[display];
+    if (!output) {
+        throw new Error("Failed to lookup output " +
+                `${display} ${displays[display]}`);
+    }
+    // cc = crtc currently assigned to this output
+    const cc = output[2] == -1 ? null : displayConfigResources.crtcs[output[2]];
+    if (!cc) {
+        throw new Error("No logical output corresponds to " +
+                `${display} ${displays[display]}`);
+    }
+    // cc: 0 = id
+    // 2, 3 = x, y
+    // 7 = transform
+    const outputs = displayConfigResources.outputs.
+        filter(o => o[2] == cc[0]).map(o => o[0]);
+    log(`crtc ${cc[0]} drives outputs ${outputs}`);
+    const new_crtc = [cc[0], modeId, cc[2], cc[3], cc[7], outputs];
+    displayConfigDbus.ApplyConfigurationSync(displayConfigResources.serial,
+            /* presistent */ false, [new_crtc], /* outputs */ []);
+}
+
+return [getDisplays, enable, disable, changeMode];
 
 })();
