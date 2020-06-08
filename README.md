@@ -2,7 +2,7 @@ Refresh Switch GNOME extension
 ==============================
 This is a GNOME shell extension to allow convenient switching of your
 monitor(s) refresh rate without having to navigate through the GNOME settings
-app.
+app and confirm each mode change.
 
 The extension is still a work in progress. The UI is currently implemented in
 the extension's preferences dialog. This made it easier to test, and to make it
