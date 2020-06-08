@@ -36,6 +36,14 @@ function populatePrefsWidget() {
             }
         } else {
             prefsWidget = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
+            prefsWidget.connect("parent-set", () => {
+                const win = prefsWidget.get_toplevel();
+                if (win && win.set_title)
+                    win.set_title("Refresh rate");
+            });
+            prefsWidget.connect("destroy", () => {
+                prefsWidget = null;
+            });
         }
         // Use of const is important here to prevent closures inadvertently
         // sharing the same values
@@ -87,13 +95,7 @@ function updatePrefsWidget() {
 
 function buildPrefsWidget() {
     if (!prefsWidget) {
-        prefsWidget = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
         populatePrefsWidget();
-        prefsWidget.connect("parent-set", () => {
-            const win = prefsWidget.get_toplevel();
-            if (win && win.set_title)
-                win.set_title("Refresh rate");
-        });
     } else {
         log("buildPrefsWidget: prefsWidget already exists");
     }
