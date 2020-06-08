@@ -9,22 +9,15 @@ let prefsWidget = null;
 const radios = new Map();
 
 function init() {
-    log("DispConf.init()");
     DispConf.enable();
+    log(`DispConf enabled`);
     oldDisplays = [];
-    DispConf.getDisplays().then(displays => {
-        oldDisplays = displays;
-        log("init => getDisplays() promise resolved");
-        if (prefsWidget) {
-            log("init => getDisplays() promise populating prefsWidget");
-            populatePrefsWidget(displays);
-        }
-    }, error => {
-        logError(error, "init => getDisplays()");
-    });
+    DispConf.updateDisplayConfig();
+    DispConf.onRefreshRateChanged = updatePrefsWidget;
+    DispConf.onMonitorsChanged = populatePrefsWidget;
 }
 
-function populatePrefsWidget(displays) {
+function populatePrefsWidget() {
     try {
         radios.clear();
         if (prefsWidget) {
@@ -38,24 +31,27 @@ function populatePrefsWidget(displays) {
         }
         // Use of const is important here to prevent closures inadvertently
         // sharing the same values
-        for (const dn in displays) {
-            const disp = displays[dn];
-            prefsWidget.pack_start(Gtk.Label.new(`${disp.name}`),
+        for (const mn in DispConf.displayState.monitors) {
+            const monitor = DispConf.displayState.monitors[mn];
+            if (!monitor.refreshRates.length)
+                continue;
+            prefsWidget.pack_start(Gtk.Label.new(`${monitor.connector}`),
                     false, false, 0);
             let group = null;
-            for (const rn in disp.refresh) {
-                const label = `${disp.refresh[rn]}Hz`;
+            for (const rn in monitor.refreshRates) {
+                const label = `${monitor.refreshRates[rn]}Hz`;
                 const radio = 
                     Gtk.RadioButton.new_with_label_from_widget(group, label);
-                radios.set(`${dn},${rn}`, radio);
+                radios.set(`${mn},${rn}`, radio);
                 if (rn == 0)
                     group = radio;
-                radio.set_active(rn == disp.current_mode);
+                radio.set_active(rn == monitor.currentMode);
                 radio.connect("toggled", r => {
                     if (r.get_active()) {
-                        log(`Display ${dn} ${disp.name} ${rn} toggled on`);
-                        if (displays[dn].current_mode != rn) {
-                            DispConf.changeMode(dn, rn);
+                        log(`Display ${mn} ${monitor.connector} ${rn} ` +
+                                "toggled on");
+                        if (monitor.currentMode != rn) {
+                            DispConf.changeMode(monitor, rn);
                         }
                             
                     }
@@ -69,59 +65,22 @@ function populatePrefsWidget(displays) {
     }
 }
 
-function updatePrefsWidget(displays) {
-    for (const dn in displays) {
-        const disp = displays[dn];
-        log(`updatePrefsWidget: Activating radio ${dn},${disp.current_mode}`);
-        radios.get(`${dn},${disp.current_mode}`).set_active(true);
+function updatePrefsWidget() {
+    if (!prefsWidget) {
+        buildPrefsWidget();
+        return;
     }
-}
-
-function onDisplayConfigChanged(displays) {
-    let rebuild = displays.length != oldDisplays.length;
-    if (!rebuild) {
-        for (const i in displays) {
-            let d1 = oldDisplays[i];
-            let d2 = displays[i];
-            if (d1.id != d2.id || d1.name != d2.name ||
-                    d1.refresh.length != d2.refresh.length) {
-                rebuild = true;
-                break;
-            }
-            for (const j in d1.refresh) {
-                if (d1.refresh[j] != d2.refresh[j]) {
-                    rebuild = true;
-                    break;
-                }
-            }
-            if (rebuild)
-                break;
-        }
+    for (const mn in DispConf.displayState.monitors) {
+        const monitor = DispConf.displayState.monitors[mn];
+        log(`updatePrefsWidget: Activating radio ${mn},${monitor.currentMode}`);
+        radios.get(`${mn},${monitor.currentMode}`).set_active(true);
     }
-    oldDisplays = displays;
-    if (rebuild)
-        populatePrefsWidget(displays);
-    else
-        updatePrefsWidget(displays);
 }
 
 function buildPrefsWidget() {
     if (!prefsWidget) {
         prefsWidget = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
-        if (oldDisplays && oldDisplays.length) {
-            log("buildPrefsWidget creating prefsWidget with oldDisplays");
-            populatePrefsWidget(oldDisplays);
-        } else if (!oldDisplays) {
-            log("buildPrefsWidget getting displays");
-            oldDisplays = [];
-            DispConf.getDisplays().then(displays => {
-                log("buildPrefsWidget => getDisplays() promise resolved");
-                oldDisplays = displays;
-                populatePrefsWidget(displays);
-            }, error => logError(error, "buildPrefsWidget"));
-        } else {
-            log("buildPrefsWidget waiting for getDisplays() promise");
-        }
+        populatePrefsWidget();
     } else {
         log("buildPrefsWidget: prefsWidget already exists");
     }

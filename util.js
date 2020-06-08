@@ -1,22 +1,32 @@
+const {Variant} = imports.gi.GLib;
+
 function logObject(o, indent) {
-    if (!indent)
-        indent = "";
-    let s = "{\n";
-    const nested = indent + "  ";
-    for (const k in o) { //of Object.getOwnPropertyNames(o)) {
-        s += `${nested}${k}: `;
-        const v = o[k];
-        if (typeof v == "string") {
-            s += `"${v}"`;
-        } else if (typeof v == "number" || !v || v === true) {
-            s += `${v}`;
+    try {
+        if (typeof o == "string") {
+            return `"${o}"`;
+        } else if (typeof o == "number" || !o || o === true) {
+            return `${o}`;
+        } else if (o instanceof Function) {
+            return "function";
+        } else if (o instanceof Variant) {
+            return `Variant(${o.deepUnpack()})`;
         } else {
-            s += logObject(v, nested);
+            if (!indent)
+                indent = "";
+            let s = "{\n";
+            const nested = indent + "  ";
+            for (const k in o) { //of Object.getOwnPropertyNames(o)) {
+                s += `${nested}${k}: `;
+                const v = o[k];
+                s += logObject(v, nested);
+                s += ",\n";
+            }
+            s += indent + '}';
+            return s;
         }
-        s += ",\n";
+    } catch (error) {
+        return `${error}`;
     }
-    s += indent + '}';
-    return s;
 }
 
 function logError(error, detail) {
