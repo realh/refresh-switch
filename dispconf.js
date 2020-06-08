@@ -100,7 +100,6 @@ class Monitor extends MonitorDetails {
                             " has no modes");
             }
         }
-        log(`modesIndex (is-current) = ${modesIndex}`);
         const currentWidth = this.modes[modesIndex].width;
         const currentHeight = this.modes[modesIndex].height;
         for (const mi in this.modes) {
@@ -108,7 +107,6 @@ class Monitor extends MonitorDetails {
             if (mi == modesIndex) {
                 add = true;
                 this.currentMode = this.filteredModes.length;
-                log(`modesIndex ${modesIndex} is filtered mode ${this.currentMode}`);
             } else if (this.modes[mi].width == currentWidth &&
                     this.modes[mi].height == currentHeight) {
                 add = true;
