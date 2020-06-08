@@ -1,6 +1,16 @@
 const {Gio, GLib} = imports.gi;
 
-const {logError, logObject} = imports.util;
+const [logError, logObject] = (function() {
+    let Util;
+    try {
+        const ExtensionUtils = imports.misc.extensionUtils;
+        const Me = ExtensionUtils.getCurrentExtension();
+        Util = Me.imports.util;
+    } catch (error) {
+        Util = imports.util;
+    }
+    return [Util.logError, Util.logObject];
+})();
 
 function arrayToObjects(ar, ctor, name) {
     if (!ar || ar.length === undefined) {

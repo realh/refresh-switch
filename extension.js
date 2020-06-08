@@ -1,4 +1,5 @@
 const Atk = imports.gi.Atk;
+const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const GObject = imports.gi.GObject;
 const St = imports.gi.St;
@@ -21,6 +22,14 @@ class RefreshSwitchButton extends PanelMenu.Button {
             style_class: 'system-status-icon'
         });
         this.actor.add_child(icon);
+    }
+
+    vfunc_event(event) {
+        if ((event.type() == Clutter.EventType.TOUCH_BEGIN ||
+                    event.type() == Clutter.EventType.BUTTON_PRESS))
+            ExtensionUtils.openPrefs();
+
+        return Clutter.EVENT_PROPAGATE;
     }
 });
 

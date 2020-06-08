@@ -1,6 +1,15 @@
 const {Gio, GLib, GObject, Gtk} = imports.gi;
-const DispConf = imports.dispconf;
-const {logError, logObject} = imports.util;
+const [DispConf, logError, logObject] = (function() {
+    try {
+        const ExtensionUtils = imports.misc.extensionUtils;
+        const Me = ExtensionUtils.getCurrentExtension();
+        const Util = Me.imports.util;
+        return [Me.imports.dispconf, Util.logError, Util.logObject];
+    } catch (error) {
+        const Util = imports.util;
+        return [imports.dispconf, Util.logError, Util.logObject];
+    }
+})();
 
 var [init, buildPrefsWidget] = (function() {
 
@@ -10,7 +19,6 @@ const radios = new Map();
 
 function init() {
     DispConf.enable();
-    log(`DispConf enabled`);
     oldDisplays = [];
     DispConf.updateDisplayConfig();
     DispConf.onRefreshRateChanged = updatePrefsWidget;
