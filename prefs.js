@@ -15,7 +15,7 @@ var [init, buildPrefsWidget] = (function() {
 
 let oldDisplays = null;
 let prefsWidget = null;
-const radios = new Map();
+var radios = new Map();
 
 function init() {
     DispConf.enable();
@@ -35,7 +35,12 @@ function populatePrefsWidget() {
                     c.destroy();
             }
         } else {
-            prefsWidget = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
+            const SPACING = 4;
+            prefsWidget = new Gtk.Grid({
+                column_homogeneous: true,
+                row_homogeneous: true,
+                column_spacing: SPACING,
+                row_spacing: SPACING});
             prefsWidget.connect("parent-set", () => {
                 const win = prefsWidget.get_toplevel();
                 if (win && win.set_title)
@@ -45,39 +50,77 @@ function populatePrefsWidget() {
                 prefsWidget = null;
             });
         }
-        // Use of const is important here to prevent closures inadvertently
+        // First work out how many columns are in the grid for spanning labels
+        let numColumns = 1;
+        for (const mon of DispConf.displayState.monitors) {
+            for (const mi of mon.modeItems) {
+                numColumns = Math.max(numColumns, mi.modes.length);
+                if (numColumns == 4)
+                    break;
+            }
+            if (numColumns == 4)
+                break;
+        }
+        let row = 0;
+        // Use of const is important below to prevent closures inadvertently
         // sharing the same values
-        for (const mn in DispConf.displayState.monitors) {
-            const monitor = DispConf.displayState.monitors[mn];
-            if (!monitor.refreshRates.length)
+        for (const mon in DispConf.displayState.monitors) {
+            const monitor = DispConf.displayState.monitors[mon];
+            if (!monitor.modeItems.length)
                 continue;
-            prefsWidget.pack_start(Gtk.Label.new(`${monitor.connector}`),
-                    false, false, 0);
+            prefsWidget.attach(Gtk.Label.new(`${monitor.connector}`),
+                    0, row, numColumns, 1);
+            ++row;
             let group = null;
-            for (const rn in monitor.refreshRates) {
-                const label = `${monitor.refreshRates[rn]}Hz`;
-                const radio = 
-                    Gtk.RadioButton.new_with_label_from_widget(group, label);
-                radios.set(`${mn},${rn}`, radio);
-                if (rn == 0)
-                    group = radio;
-                radio.set_active(rn == monitor.currentMode);
-                radio.connect("toggled", r => {
-                    if (r.get_active()) {
-                        log(`Display ${mn} ${monitor.connector} ${rn} ` +
-                                "toggled on");
-                        if (monitor.currentMode != rn) {
-                            DispConf.changeMode(monitor, rn);
-                        }
-                            
+            for (const min in monitor.modeItems) {
+                const mi = monitor.modeItems[min];
+                for (const mdn in mi.modes) {
+                    const md = mi.modes[mdn];
+                    let label;
+                    if (mdn == 0) {
+                        label = `${mi.refresh}Hz`;
+                        if (md.interlaced && !md.underscan)
+                            label += " (i)";
+                        else if (!md.interlaced && md.underscan)
+                            label += " (u)";
+                        else if (md.interlaced && md.underscan)
+                            label += " (iu)";
+                    } else {
+                        if (md.interlaced && ! md.underscan)
+                            label = "Interlaced";
+                        else if (!md.interlaced && md.underscan)
+                            label = "Underscan";
+                        else if (md.interlaced && md.underscan)
+                            label += "Interlaced & Underscan";
+                        else    // Shouldn't happen
+                            label = "-";
                     }
-                });
-                prefsWidget.pack_start(radio, false, false, 0);
+                    const radio = Gtk.RadioButton.new_with_label_from_widget(
+                            group, label);
+                    radios.set(`${mon},${min},${mdn}`, radio);
+                    if (min == 0 && mdn == 0)
+                        group = radio;
+                    radio.set_active(min == monitor.currentMode &&
+                            mdn == monitor.currentSubMode);
+                    radio.connect("toggled", r => {
+                        if (r.get_active()) {
+                            log(`Monitor ${mon} ${monitor.connector} ` +
+                                `mode ${min}/${mdn} toggled on`);
+                            if (monitor.currentMode != min ||
+                                    monitor.currentSubMode != mdn) {
+                                DispConf.changeMode(monitor, min, mdn);
+                            }
+                        }
+                    });
+                    prefsWidget.attach(radio, mdn, row, 1, 1);
+                }
+                ++row;
             }
         }
         prefsWidget.show_all();
     } catch (error) {
         logError(error, "populatePrefsWidget");
+        throw error;
     }
 }
 
@@ -88,8 +131,10 @@ function updatePrefsWidget() {
     }
     for (const mn in DispConf.displayState.monitors) {
         const monitor = DispConf.displayState.monitors[mn];
-        log(`updatePrefsWidget: Activating radio ${mn},${monitor.currentMode}`);
-        radios.get(`${mn},${monitor.currentMode}`).set_active(true);
+        log(`updatePrefsWidget: Activating radio ` +
+                `${mn},${monitor.currentMode},${monitor.currentSubMode}`);
+        radios.get(`${mn},${monitor.currentMode},${monitor.currentSubMode}`).
+            set_active(true);
     }
 }
 

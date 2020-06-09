@@ -265,7 +265,7 @@ class Monitor extends MonitorDetails {
             const m = this.modeItems[mi];
             for (const sm in m.modes) {
                 if (this.modes[m.modes[sm].modeIndex].isCurrent()) {
-                    this.currentSubMode == sm;
+                    this.currentSubMode = sm;
                     this.currentMode = mi;
                     break;
                 }
@@ -289,11 +289,17 @@ class Monitor extends MonitorDetails {
     changeMode(currentMode, subMode) {
         let modeItem =
             this.modeItems[this.currentMode].modes[this.currentSubMode];
+        log(`modeItem for old selection ` +
+                `${this.currentMode}/${this.currentSubMode}:` +
+                `${logObject(modeItem)}`);
         delete this.modes[modeItem.modeIndex].properties['is-current'];
         this.currentMode = currentMode;
         this.currentSubMode = subMode;
         modeItem =
             this.modeItems[currentMode].modes[subMode];
+        log(`modeItem for new selection ` +
+                `${currentMode}/${subMode}:` +
+                `${logObject(modeItem)}`);
         this.modes[modeItem.modeIndex].properties['is-current'] = true;
     }
 
@@ -471,8 +477,8 @@ function updateDisplayConfig() {
         onRefreshRateChanged(displayState);
 }
 
-function changeMode(monitor, mode) {
-    monitor.changeMode(mode);
+function changeMode(monitor, mode, subMode) {
+    monitor.changeMode(mode, subMode);
     const logical_monitors = displayState.logical_monitors.map(lm =>
             lm.getState());
     ignoreSignal = true;
