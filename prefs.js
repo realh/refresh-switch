@@ -37,8 +37,8 @@ function populatePrefsWidget() {
         } else {
             const SPACING = 4;
             prefsWidget = new Gtk.Grid({
-                column_homogeneous: true,
-                row_homogeneous: true,
+                column_homogeneous: false,
+                row_homogeneous: false,
                 column_spacing: SPACING,
                 row_spacing: SPACING});
             prefsWidget.connect("parent-set", () => {
