@@ -74,9 +74,13 @@ function populatePrefsWidget() {
             let group = null;
             for (const min in monitor.modeItems) {
                 const mi = monitor.modeItems[min];
+                log(`modeItem ${min} .refresh = ${mi.refresh}`);
                 for (const mdn in mi.modes) {
                     const md = mi.modes[mdn];
                     let label;
+                    const smi = md.modeIndex;
+                    log(`subMode ${mdn} is modes[${smi}] with refresh_rate ` +
+                            `${monitor.modes[smi].refresh_rate}`);
                     if (mdn == 0) {
                         label = `${mi.refresh}Hz`;
                         if (md.interlaced && !md.underscan)
@@ -102,6 +106,10 @@ function populatePrefsWidget() {
                         group = radio;
                     radio.set_active(min == monitor.currentMode &&
                             mdn == monitor.currentSubMode);
+                    if (min == monitor.currentMode &&
+                            mdn == monitor.currentSubMode) {
+                        log(`This is the active mode`);
+                    }
                     radio.connect("toggled", r => {
                         if (r.get_active()) {
                             log(`Monitor ${mon} ${monitor.connector} ` +
@@ -133,6 +141,10 @@ function updatePrefsWidget() {
         const monitor = DispConf.displayState.monitors[mn];
         log(`updatePrefsWidget: Activating radio ` +
                 `${mn},${monitor.currentMode},${monitor.currentSubMode}`);
+        const mi = monitor.modeItems[monitor.currentMode];
+        log(`modeItems refresh rate = ${mi.refresh}`);
+        const smi = mi.modes[monitor.currentSubMode].modeIndex;
+        log(`modes ${smi} refresh rate = ${monitor.modes[smi].refresh_rate}`);
         radios.get(`${mn},${monitor.currentMode},${monitor.currentSubMode}`).
             set_active(true);
     }

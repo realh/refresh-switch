@@ -12,6 +12,8 @@ const [logError, logObject] = (function() {
     return [Util.logError, Util.logObject];
 })();
 
+function blog() {};
+
 function arrayToObjects(ar, ctor, name) {
     if (!ar || ar.length === undefined) {
         log(`No source array (${ar}) to create array of ${name}`);
@@ -113,8 +115,8 @@ class Monitor extends MonitorDetails {
 
     // Creates three new fields:
     // * modeItems is an array of:
-    //   { refresh: d,
-    //      modes: [{ modeIndex: i, interlaced: b, underscan?: b}, ...] }
+    //   { refresh: num,
+    //     modes: [{ modeIndex: int, interlaced: bool, underscan?: bool}, ...] }
     //   where mode is an index into this.modes
     // * currentMode
     //   Index of current mode in modeItems
@@ -145,17 +147,20 @@ class Monitor extends MonitorDetails {
                 filteredModes.push(mi);
             }
         }
-        log(`filteredModes: [${filteredModes}]`);
-        // Sort by refresh rate
+        blog(`filteredModes: [${filteredModes}] refresh rates ` +
+                `[${filteredModes.map(a => this.modes[a].refresh_rate)}]`);
+        // Sort by refresh rate (descending)
         filteredModes.sort((a, b) => {
             a = this.modes[a].refresh_rate;
             b = this.modes[b].refresh_rate;
-            if (a < b)
+            if (a > b)
                 return -1;
-            else if (a > b)
+            else if (a < b)
                 return 1;
             else return 0;
         });
+        blog(`sorted filteredModes: [${filteredModes}] refresh rates ` +
+                `[${filteredModes.map(a => this.modes[a].refresh_rate)}]`);
         let canUnderscan = this.properties["is-underscanning"];
         canUnderscan = canUnderscan === true || canUnderscan === false;
         let currentRefresh = [];
@@ -173,10 +178,10 @@ class Monitor extends MonitorDetails {
                     const pr = prevMode.refresh_rate;
                     const tr = thisMode.refresh_rate;
                     const nr = nextMode.refresh_rate;
-                    // Rates are in ascending order so no need to use abs()
+                    // Rates are in descending order so no need to use abs()
                     // Don't pair if thisMode is closer to next mode than to
                     // prevMode
-                    if ((tr - pr > nr - tr &&
+                    if ((pr - tr > tr - nr &&
                                 pairableModes(thisMode, nextMode)) ||
                             // Nor if the refresh rates aren't an exact match
                             // and next mode would have the same rounded value
@@ -185,8 +190,11 @@ class Monitor extends MonitorDetails {
                     }
                 }
             }
-            const newMode = {modeIndex: i, interlaced: thisMode.isInterlaced(),
-                underscan: false};
+            const newMode = {
+                modeIndex: filteredModes[i],
+                interlaced: thisMode.isInterlaced(),
+                underscan: false
+            };
             if (pairable) {
                 if (newMode.isInterlaced())
                     currentRefresh.push(newMode);
@@ -198,18 +206,18 @@ class Monitor extends MonitorDetails {
                         modes: currentRefresh});
             }
         }
-        log(`modeItems with raw refresh rates: ${logObject(this.modeItems)}`);
+        blog(`modeItems with raw refresh rates: ${logObject(this.modeItems)}`);
         // Now convert refresh rates to unique but rounded strings
         let uniqueRefreshes = this.modeItems.map(a => a.refresh);
         let i = 0;
         while (i < uniqueRefreshes.length) {
             let ri = uniqueRefreshes[i];
             let j = i + 1;
-                log(`Loop condition for i ${i} j ${j}`); 
-                log(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
-                log(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
+                blog(`Loop condition for i ${i} j ${j}`); 
+                blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
+                blog(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
                         `ri ${ri}: ${uniqueRefreshes[j] != ri}`);
-                log("Math.round(uniqueRefreshes[j]) " +
+                blog("Math.round(uniqueRefreshes[j]) " +
                     `${Math.round(uniqueRefreshes[j])} == ` +
                     `Math.round(ri) ${Math.round(ri)}: ` +
                     `${Math.round(uniqueRefreshes[j]) == Math.round(ri)}`);
@@ -218,12 +226,12 @@ class Monitor extends MonitorDetails {
                     Math.round(uniqueRefreshes[j]) == Math.round(ri); ++j)
             {
                 ++j;
-                log(`Loop condition for i ${i} j ${j}`); 
-                log(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
+                blog(`Loop condition for i ${i} j ${j}`); 
+                blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
                 if (j < uniqueRefreshes.length) {
-                    log(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
+                    blog(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
                             `ri ${ri}: ${uniqueRefreshes[j] != ri}`);
-                    log("Math.round(uniqueRefreshes[j]) " +
+                    blog("Math.round(uniqueRefreshes[j]) " +
                         `${Math.round(uniqueRefreshes[j])} == ` +
                         `Math.round(ri) ${Math.round(ri)}: ` +
                         `${Math.round(uniqueRefreshes[j]) == Math.round(ri)}`);
@@ -231,29 +239,29 @@ class Monitor extends MonitorDetails {
                 --j;
             }
             --j;
-            log(`j is ${j} for i ${i}`);
+            blog(`j is ${j} for i ${i}`);
             let rounding = 1;
             if (j > i) {
                 for (let k = i + 1; k <= j; ++k) {
                     const uk = uniqueRefreshes[k];
                     const uk1 = uniqueRefreshes[k - 1];
-                    log(`k ${k} uk ${uniqueRefreshes[k]} ` +
+                    blog(`k ${k} uk ${uniqueRefreshes[k]} ` +
                             `uk1 ${uniqueRefreshes[k - 1]}`);
                     let rk, rk1;
                     while ((rk = roundBy(uk, rounding)) ==
                                     (rk1 = roundBy(uk1, rounding)) &&
                             (rk != uk || rk1 != uk1)) {
                         rounding *= 10;
-                        log(`  rk ${rk} rk1 ${rk1} inc rounding to ${rounding}`);
+                        blog(`  rk ${rk} rk1 ${rk1} inc rounding to ${rounding}`);
                     }
-                    log(`  rk ${rk} rk1 ${rk1} done: rounding ${rounding}`);
+                    blog(`  rk ${rk} rk1 ${rk1} done: rounding ${rounding}`);
                 }
             }
             for (let k = i; k <= j; ++k) {
                 this.modeItems[k].refresh = roundBy(uniqueRefreshes[k],
                         rounding);
             }
-            log(`k loop ended with i ${j + 1}`);
+            blog(`k loop ended with i ${j + 1}`);
             if (j < i)
                 break;
             i = j + 1;
@@ -286,21 +294,25 @@ class Monitor extends MonitorDetails {
     }
 
     // Only updates this object's records
-    changeMode(currentMode, subMode) {
-        let modeItem =
-            this.modeItems[this.currentMode].modes[this.currentSubMode];
-        log(`modeItem for old selection ` +
+    changeMode(newMode, newSub) {
+        let modeItem = this.modeItems[this.currentMode];
+        let subMode = modeItem.modes[this.currentSubMode];
+        let sysMode = this.modes[subMode.modeIndex];
+        log(`subMode for old selection ` +
                 `${this.currentMode}/${this.currentSubMode}:` +
-                `${logObject(modeItem)}`);
-        delete this.modes[modeItem.modeIndex].properties['is-current'];
-        this.currentMode = currentMode;
-        this.currentSubMode = subMode;
-        modeItem =
-            this.modeItems[currentMode].modes[subMode];
-        log(`modeItem for new selection ` +
-                `${currentMode}/${subMode}:` +
-                `${logObject(modeItem)}`);
-        this.modes[modeItem.modeIndex].properties['is-current'] = true;
+                `${logObject(subMode)}` +
+                `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
+        delete sysMode.properties['is-current'];
+        this.currentMode = newMode;
+        this.currentSubMode = newSub;
+        modeItem = this.modeItems[newMode];
+        subMode = modeItem.modes[newSub];
+        sysMode = this.modes[subMode.modeIndex];
+        log(`subMode for new selection ` +
+                `${newMode}/${newSub}:` +
+                `${logObject(subMode)}` +
+                `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
+        sysMode.properties['is-current'] = true;
     }
 
     // Gets a tuple for use as a monitor element in ApplyMonitorsConfig
