@@ -139,7 +139,12 @@ class Monitor extends MonitorDetails {
         const currentWidth = this.modes[modesIndex].width;
         const currentHeight = this.modes[modesIndex].height;
         let filteredModes = [];
-        for (const mi in this.modes) {
+        for (let mi in this.modes) {
+            // sometimes it's a string instead of a number
+            if (typeof mi == "string") {
+                log(`modes key ${mi} is a string!`);
+                mi = Number(mi);
+            }
             if (mi == modesIndex) {
                 filteredModes.push(mi);
             } else if (this.modes[mi].width == currentWidth &&
@@ -159,14 +164,18 @@ class Monitor extends MonitorDetails {
                 return 1;
             else return 0;
         });
-        blog(`sorted filteredModes: [${filteredModes}] refresh rates ` +
+        log(`sorted filteredModes: [${filteredModes}] refresh rates ` +
                 `[${filteredModes.map(a => this.modes[a].refresh_rate)}]`);
         let canUnderscan = this.properties["is-underscanning"];
         canUnderscan = canUnderscan === true || canUnderscan === false;
         let currentRefresh = [];
         // Build refreshRates, making interlaced/!interlaced pairs
         // where possible
-        for (const i in filteredModes) {
+        for (let i in filteredModes) {
+            if (typeof i == "string") {
+                log(`filteredModes key ${i} is a string!`);
+                i = Number(i);
+            }
             const prevMode = (currentRefresh.length == 1) ?
                 this.modes[currentRefresh[0].modeIndex] : undefined;
             const thisMode = this.modes[filteredModes[i]];
@@ -174,6 +183,8 @@ class Monitor extends MonitorDetails {
             if (prevMode && pairableModes(prevMode, thisMode)) {
                 pairable = true;
                 if (i < filteredModes.length - 1) {
+                    log(`i ${i}`);
+                    log(`filteredModes[i + 1] ${filteredModes[i + 1]}`);
                     const nextMode = this.modes[filteredModes[i + 1]];
                     const pr = prevMode.refresh_rate;
                     const tr = thisMode.refresh_rate;
@@ -196,7 +207,7 @@ class Monitor extends MonitorDetails {
                 underscan: false
             };
             if (pairable) {
-                if (newMode.isInterlaced())
+                if (newMode.interlaced)
                     currentRefresh.push(newMode);
                 else
                     currentRefresh.unshift(newMode);
