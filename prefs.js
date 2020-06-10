@@ -64,7 +64,7 @@ function populatePrefsWidget() {
         let row = 0;
         // Use of const is important below to prevent closures inadvertently
         // sharing the same values
-        for (const mon in DispConf.displayState.monitors) {
+        for (let mon = 0; mon < DispConf.displayState.monitors.length; ++mon) {
             const monitor = DispConf.displayState.monitors[mon];
             if (!monitor.modeItems.length)
                 continue;
@@ -72,10 +72,10 @@ function populatePrefsWidget() {
                     0, row, numColumns, 1);
             ++row;
             let group = null;
-            for (const min in monitor.modeItems) {
+            for (let min = 0; min < monitor.modeItems.length; ++min) {
                 const mi = monitor.modeItems[min];
                 log(`modeItem ${min} .refresh = ${mi.refresh}`);
-                for (const mdn in mi.modes) {
+                for (let mdn = 0; mdn < mi.modes.length; ++mdn) {
                     const md = mi.modes[mdn];
                     let label;
                     const smi = md.modeIndex;
@@ -137,7 +137,7 @@ function updatePrefsWidget() {
         buildPrefsWidget();
         return;
     }
-    for (const mn in DispConf.displayState.monitors) {
+    for (let mn = 0; mn < DispConf.displayState.monitors.length; ++mn) {
         const monitor = DispConf.displayState.monitors[mn];
         log(`updatePrefsWidget: Activating radio ` +
                 `${mn},${monitor.currentMode},${monitor.currentSubMode}`);

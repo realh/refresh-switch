@@ -27,6 +27,7 @@ function arrayToObjects(ar, ctor, name) {
             return ctor(a);
         } catch (error) {
             log(`Error creating ${name} from ${a}: ${error}`);
+            log(logObject(error.stack));
             return null;
         }
     }).filter(a => a != null);
@@ -139,12 +140,7 @@ class Monitor extends MonitorDetails {
         const currentWidth = this.modes[modesIndex].width;
         const currentHeight = this.modes[modesIndex].height;
         let filteredModes = [];
-        for (let mi in this.modes) {
-            // sometimes it's a string instead of a number
-            if (typeof mi == "string") {
-                log(`modes key ${mi} is a string!`);
-                mi = Number(mi);
-            }
+        for (let mi = 0; mi < this.modes.length; ++mi) {
             if (mi == modesIndex) {
                 filteredModes.push(mi);
             } else if (this.modes[mi].width == currentWidth &&
@@ -171,7 +167,7 @@ class Monitor extends MonitorDetails {
         let currentRefresh = [];
         // Build refreshRates, making interlaced/!interlaced pairs
         // where possible
-        for (let i in filteredModes) {
+        for (let i = 0; i < filteredModes.length; ++i) {
             if (typeof i == "string") {
                 log(`filteredModes key ${i} is a string!`);
                 i = Number(i);
@@ -280,9 +276,9 @@ class Monitor extends MonitorDetails {
         // TODO: If the monitor supports underscan, add copies of modes
         this.currentMode = undefined
         this.currentSubMode = undefined
-        for (const mi in this.modeItems) {
+        for (let mi = 0; mi < this.modeItems.length; ++mi) {
             const m = this.modeItems[mi];
-            for (const sm in m.modes) {
+            for (let sm = 0; sm < m.modes.length; ++sm) {
                 if (this.modes[m.modes[sm].modeIndex].isCurrent()) {
                     this.currentSubMode = sm;
                     this.currentMode = mi;
@@ -341,7 +337,7 @@ class Monitor extends MonitorDetails {
             return false;
         if (this.modeItems.length != other.modeItems.length)
             return false;
-        for (const i in this.modeItems) {
+        for (let i = 0; i < this.modeItems.length; ++i) {
             const tmi = this.modeItems[i];
             const omi = other.modeItems[i];
             if (tmi.refresh != omi.refresh)
@@ -485,7 +481,7 @@ function updateDisplayConfig() {
     };
     let bigChange = false;
     if (oldState && oldState.monitors.length == displayState.monitors.length) {
-        for (const i in displayState.monitors) {
+        for (let i = 0; i < displayState.monitors.length; ++i) {
             if (!displayState.monitors[i].compatible(oldState.monitors[i])) {
                 bigChange = true;
                 break;
