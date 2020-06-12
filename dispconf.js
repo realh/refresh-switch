@@ -319,7 +319,7 @@ class Monitor extends MonitorDetails {
         sysMode = this.modes[subMode.modeIndex];
         log(`subMode for new selection ` +
                 `${newMode}/${newSub}:` +
-                `${logObject(subMode)}` +
+                `${logObject(subMode)}\n` +
                 `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
         sysMode.properties['is-current'] = true;
     }
