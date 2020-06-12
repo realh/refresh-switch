@@ -309,7 +309,7 @@ class Monitor extends MonitorDetails {
         let sysMode = this.modes[subMode.modeIndex];
         log(`subMode for old selection ` +
                 `${this.currentMode}/${this.currentSubMode}:` +
-                `${logObject(subMode)}` +
+                `${logObject(subMode)}\n` +
                 `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
         delete sysMode.properties['is-current'];
         this.currentMode = newMode;
@@ -512,7 +512,7 @@ function changeMode(monitor, mode, subMode) {
     if (layout_mode != 1 && layout_mode != 2)
         layout_mode = undefined;
     const props = layout_mode ? { "layout-mode": layout_mode } : {};
-    log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
+    //log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
     displayConfigDbus.ApplyMonitorsConfigSync(
             displayState.serial,
             1,  // Apply temporarily
