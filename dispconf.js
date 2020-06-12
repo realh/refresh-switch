@@ -280,7 +280,9 @@ class Monitor extends MonitorDetails {
         this.currentSubMode = undefined
         for (let mi = 0; mi < this.modeItems.length; ++mi) {
             const m = this.modeItems[mi];
+            log(`Looking at modeItem ${mi}: ${logObject(m)}`);
             for (let sm = 0; sm < m.modes.length; ++sm) {
+                log(`Looking at subMode ${sm}: ${logObject(m.modes[sm])}`);
                 if (this.modes[m.modes[sm].modeIndex].isCurrent()) {
                     this.currentSubMode = sm;
                     this.currentMode = mi;
@@ -291,6 +293,11 @@ class Monitor extends MonitorDetails {
             }
         }
         this.debugModeItems();
+        if (this.currentMode === undefined) {
+            log(`No mode is current for monitor ${this.connector}`);
+            this.currentSubMode = 0;
+            this.currentMode = 0;
+        }
     }
 
     debugModeItems() {
@@ -438,31 +445,42 @@ let displayConfigDbus = null;
 var displayState = null;
 let monitorsChangedTag = 0;
 
-let ignoreSignal = false;
+// After we change mode, reading the state in response to the resultant
+// MonitorsChanged signal returns data with the old mode current, not the one
+// we just requested. This flag helps us try to deal with it.
+let earlySignal = false;
+
+function monitorStatesAreCompatible(a, b) {
+    let compatible = true;
+    if (a && a.monitors.length == b.monitors.length) {
+        for (let i = 0; i < b.monitors.length; ++i) {
+            if (!b.monitors[i].compatible(a.monitors[i])) {
+                compatible = false;
+                break;
+            }
+        }
+    } else {
+        compatible = false;
+    }
+    return compatible;
+}
 
 function monitorsChangedHandler() {
     // This signal gets raised when we've changed the state ourselves,
     // but if it isn't the first time we've changed the state, calling
     // GetCurrentState here has "is-current" on the old mode, not the new
-    // one, so we have to ignore that.
-    log(`MonitorsChanged: ignore ${ignoreSignal}`);
-    if (ignoreSignal) {
-        ignoreSignal = false;
+    // one, so we have to stop this fooling us into changing back to the old
+    // mode.
+    log(`MonitorsChanged: ignore ${earlySignal}`);
+    const oldState = displayState;
+    let bigChange = !monitorStatesAreCompatible(oldState, displayState);
+    if (earlySignal && !bigChange) {
+        earlySignal = false;
+        displayState.monitors = oldState.monitors;
         return;
     }
-    const oldState = displayState;
+    earlySignal = false;
     updateDisplayConfig();
-    let bigChange = false;
-    if (oldState && oldState.monitors.length == displayState.monitors.length) {
-        for (let i = 0; i < displayState.monitors.length; ++i) {
-            if (!displayState.monitors[i].compatible(oldState.monitors[i])) {
-                bigChange = true;
-                break;
-            }
-        }
-    } else {
-        bigChange = true;
-    }
     if (bigChange && onMonitorsChanged)
         onMonitorsChanged(displayState);
     else if (!bigChange && onRefreshRateChanged)
@@ -505,14 +523,14 @@ function changeMode(monitor, mode, subMode) {
     monitor.changeMode(mode, subMode);
     const logical_monitors = displayState.logical_monitors.map(lm =>
             lm.getState());
-    ignoreSignal = true;
+    earlySignal = true;
     let layout_mode =
         displayState.properties["supports-changing-layout-mode"] ?
         displayState.properties["layout-mode"] : undefined;
     if (layout_mode != 1 && layout_mode != 2)
         layout_mode = undefined;
     const props = layout_mode ? { "layout-mode": layout_mode } : {};
-    //log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
+    log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
     displayConfigDbus.ApplyMonitorsConfigSync(
             displayState.serial,
             1,  // Apply temporarily

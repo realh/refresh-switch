@@ -16,6 +16,7 @@ var [init, buildPrefsWidget] = (function() {
 let oldDisplays = null;
 let prefsWidget = null;
 var radios = new Map();
+let ignoreToggle = true;
 
 function init() {
     DispConf.enable();
@@ -111,7 +112,7 @@ function populatePrefsWidget() {
                         log(`This is the active mode`);
                     }
                     radio.connect("toggled", r => {
-                        if (r.get_active()) {
+                        if (!ignoreToggle && r.get_active()) {
                             log(`Monitor ${mon} ${monitor.connector} ` +
                                 `mode ${min}/${mdn} toggled on`);
                             if (monitor.currentMode != min ||
@@ -126,6 +127,7 @@ function populatePrefsWidget() {
             }
         }
         prefsWidget.show_all();
+        ignoreToggle = false;
     } catch (error) {
         logError(error, "populatePrefsWidget");
         throw error;
@@ -137,6 +139,7 @@ function updatePrefsWidget() {
         buildPrefsWidget();
         return;
     }
+    ignoreToggle = true;
     for (let mn = 0; mn < DispConf.displayState.monitors.length; ++mn) {
         const monitor = DispConf.displayState.monitors[mn];
         log(`updatePrefsWidget: Activating radio ` +
@@ -148,6 +151,7 @@ function updatePrefsWidget() {
         radios.get(`${mn},${monitor.currentMode},${monitor.currentSubMode}`).
             set_active(true);
     }
+    ignoreToggle = false;
 }
 
 function buildPrefsWidget() {
