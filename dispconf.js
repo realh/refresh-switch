@@ -438,23 +438,42 @@ let monitorsChangedTag = 0;
 
 let ignoreSignal = false;
 
+function monitorsChangedHandler() {
+    const oldState = displayState;
+    updateDisplayConfig();
+    // This signal gets raised when we've changed the state ourselves,
+    // but if it isn't the first time we've changed the state, calling
+    // GetCurrentState here has "is-current" on the old mode, not the new
+    // one, so we have to ignore that.
+    log(`MonitorsChanged: ignore ${ignoreSignal}`);
+    if (ignoreSignal) {
+        ignoreSignal = false;
+        return;
+    }
+    let bigChange = false;
+    if (oldState && oldState.monitors.length == displayState.monitors.length) {
+        for (let i = 0; i < displayState.monitors.length; ++i) {
+            if (!displayState.monitors[i].compatible(oldState.monitors[i])) {
+                bigChange = true;
+                break;
+            }
+        }
+    } else {
+        bigChange = true;
+    }
+    if (bigChange && onMonitorsChanged)
+        onMonitorsChanged(displayState);
+    else if (!bigChange && onRefreshRateChanged)
+        onRefreshRateChanged(displayState);
+}
+
 function enable() {
     if (displayConfigDbus)
         return;
     displayConfigDbus = new DisplayConfigProxy(Gio.DBus.session,
         "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig");
     monitorsChangedTag = displayConfigDbus.connectSignal("MonitorsChanged",
-            () => {
-        // This signal gets raised when we've changed the state ourselves,
-        // but if it isn't the first time we've changed the state, calling
-        // GetCurrentState here has "is-current" on the old mode, not the new
-        // one, so we have to ignore that.
-        log(`MonitorsChanged: ignore ${ignoreSignal}`);
-        if (ignoreSignal)
-            ignoreSignal = false;
-        else
-            updateDisplayConfig();
-    });
+        monitorsChangedHandler);
 }
 
 function disable() {
@@ -471,7 +490,6 @@ var onMonitorsChanged = null;
 
 function updateDisplayConfig() {
     const state = displayConfigDbus.GetCurrentStateSync();
-    const oldState = displayState;
     displayState = {
         serial: state[0], 
         monitors: arrayToObjects(state[1], m => new Monitor(m), "Monitor"),
@@ -479,21 +497,6 @@ function updateDisplayConfig() {
                     "LogicalMonitor"),
         properties: readProperties(state[3])
     };
-    let bigChange = false;
-    if (oldState && oldState.monitors.length == displayState.monitors.length) {
-        for (let i = 0; i < displayState.monitors.length; ++i) {
-            if (!displayState.monitors[i].compatible(oldState.monitors[i])) {
-                bigChange = true;
-                break;
-            }
-        }
-    } else {
-        bigChange = true;
-    }
-    if (bigChange && onMonitorsChanged)
-        onMonitorsChanged(displayState);
-    else if (!bigChange && onRefreshRateChanged)
-        onRefreshRateChanged(displayState);
 }
 
 function changeMode(monitor, mode, subMode) {
