@@ -439,8 +439,6 @@ let monitorsChangedTag = 0;
 let ignoreSignal = false;
 
 function monitorsChangedHandler() {
-    const oldState = displayState;
-    updateDisplayConfig();
     // This signal gets raised when we've changed the state ourselves,
     // but if it isn't the first time we've changed the state, calling
     // GetCurrentState here has "is-current" on the old mode, not the new
@@ -450,6 +448,8 @@ function monitorsChangedHandler() {
         ignoreSignal = false;
         return;
     }
+    const oldState = displayState;
+    updateDisplayConfig();
     let bigChange = false;
     if (oldState && oldState.monitors.length == displayState.monitors.length) {
         for (let i = 0; i < displayState.monitors.length; ++i) {
@@ -510,6 +510,7 @@ function changeMode(monitor, mode, subMode) {
     if (layout_mode != 1 && layout_mode != 2)
         layout_mode = undefined;
     const props = layout_mode ? { "layout-mode": layout_mode } : {};
+    log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
     displayConfigDbus.ApplyMonitorsConfigSync(
             displayState.serial,
             1,  // Apply temporarily
