@@ -220,14 +220,16 @@ class Monitor extends MonitorDetails {
         while (i < uniqueRefreshes.length) {
             let ri = uniqueRefreshes[i];
             let j = i + 1;
-                blog(`Loop condition for i ${i} j ${j}`); 
-                blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
+            blog(`Loop condition for i ${i} j ${j}`); 
+            blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
+            if (j < uniqueRefreshes.length) {
                 blog(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
                         `ri ${ri}: ${uniqueRefreshes[j] != ri}`);
                 blog("Math.round(uniqueRefreshes[j]) " +
                     `${Math.round(uniqueRefreshes[j])} == ` +
                     `Math.round(ri) ${Math.round(ri)}: ` +
                     `${Math.round(uniqueRefreshes[j]) == Math.round(ri)}`);
+            }
             for (j = i + 1; j < uniqueRefreshes.length &&
                     uniqueRefreshes[j] != ri &&
                     Math.round(uniqueRefreshes[j]) == Math.round(ri); ++j)
