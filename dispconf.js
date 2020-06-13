@@ -1,48 +1,19 @@
-const {Gio, GLib} = imports.gi;
-
-const [logError, logObject] = (function() {
-    let Util;
+const Util = (function() {
     try {
         const ExtensionUtils = imports.misc.extensionUtils;
         const Me = ExtensionUtils.getCurrentExtension();
-        Util = Me.imports.util;
+        return Me.imports.util;
     } catch (error) {
-        Util = imports.util;
+        return imports.util;
     }
-    return [Util.logError, Util.logObject];
 })();
 
-function blog() {};
+const {Gio, GLib} = imports.gi;
 
-function arrayToObjects(ar, ctor, name) {
-    if (!ar || ar.length === undefined) {
-        log(`No source array (${ar}) to create array of ${name}`);
-        return [];
-    } else if (!ar.length) {
-        log(`Empty source array for array of ${name}`);
-        return [];
-    }
-    return ar.map(a => {
-        try {
-            return ctor(a);
-        } catch (error) {
-            log(`Error creating ${name} from ${a}: ${error}`);
-            log(logObject(error.stack));
-            return null;
-        }
-    }).filter(a => a != null);
-}
+const {logError, logObject, arrayToObjects, readProperties,
+    isRoundable, roundBy, wouldRoundTheSame} = Util;
 
-function readProperties(o) {
-    let result = {};
-    for (const k in o) {
-        let v = o[k];
-        if (v instanceof GLib.Variant)
-            v = v.deepUnpack();
-        result[k] = v;
-    }
-    return result;
-}
+var onMonitorsChanged = null;
 
 class Mode {
     constructor(ar) {
@@ -82,275 +53,19 @@ class MonitorDetails {
     }
 }
 
-function isRoundable(n) {
-    return (Math.ceil(n) - n < 0.1) || (n - Math.floor(n) < 0.1);
-}
-
-function wouldRoundTheSame(a, b) {
-    return a == b ||
-        (isRoundable(a) && isRoundable(b) && Math.round(a) == Math.round(b));
-}
-
-function pairableModes(a, b) {
-    if (a.isInterlaced() == b.isInterlaced())
-        return false;
-    a = a.refresh_rate;
-    b = b.refresh_rate;
-    return a == b || (isRoundable(a) && isRoundable(b) &&
-            Math.round(a) == Math.round(b));
-}
-
-// Returns a rounded to log10(b) decimal places
-function roundBy(a, b) {
-    return Math.round(a * b) / b;
-}
-
 class Monitor extends MonitorDetails {
     constructor(ar) {
         super(ar[0]);
         this.modes = arrayToObjects(ar[1], m => new Mode(m), "Mode");
+        this.modes = this.modes.reduce((acc, v) => {
+            acc[v.id] = v;
+            if (v.properties["is-current"]) {
+                delete v.properties["is-current"];
+                this.currentMode = v.id;
+            }
+            return acc;
+        }, {});
         this.properties = readProperties(ar[2]);
-        this.propertyVariants = ar[2];
-        this.processModes();
-    }
-
-    // Creates three new fields:
-    // * modeItems is an array of:
-    //   { refresh: num,
-    //     modes: [{ modeIndex: int, interlaced: bool, underscan?: bool}, ...] }
-    //   where mode is an index into this.modes
-    // * currentMode
-    //   Index of current mode in modeItems
-    // * currentSubMode
-    //   Index of current mode in refreshRates[currentRefresh].modes
-    processModes() {
-        this.modeItems = [];
-        let modesIndex = this.modes.findIndex(m => m.isCurrent());
-        if (modesIndex == -1) {
-            log("No current mode!");
-            modesIndex = this.modes.findIndex(m => m.isPreferred());
-            if (modesIndex == -1) {
-                if (this.modes.length)
-                    modesIndex = 0;
-                else
-                    throw new Error(`Monitor connected to ${this.connector}` +
-                            " has no modes");
-            }
-        }
-        const currentWidth = this.modes[modesIndex].width;
-        const currentHeight = this.modes[modesIndex].height;
-        let filteredModes = [];
-        for (let mi = 0; mi < this.modes.length; ++mi) {
-            if (mi == modesIndex) {
-                filteredModes.push(mi);
-            } else if (this.modes[mi].width == currentWidth &&
-                    this.modes[mi].height == currentHeight) {
-                filteredModes.push(mi);
-            }
-        }
-        blog(`filteredModes: [${filteredModes}] refresh rates ` +
-                `[${filteredModes.map(a => this.modes[a].refresh_rate)}]`);
-        // Sort by refresh rate (descending)
-        filteredModes.sort((a, b) => {
-            a = this.modes[a].refresh_rate;
-            b = this.modes[b].refresh_rate;
-            if (a > b)
-                return -1;
-            else if (a < b)
-                return 1;
-            else return 0;
-        });
-        log(`sorted filteredModes: [${filteredModes}] refresh rates ` +
-                `[${filteredModes.map(a => this.modes[a].refresh_rate)}]`);
-        let canUnderscan = this.properties["is-underscanning"];
-        canUnderscan = canUnderscan === true || canUnderscan === false;
-        let currentRefresh = [];
-        // Build refreshRates, making interlaced/!interlaced pairs
-        // where possible
-        for (let i = 0; i < filteredModes.length; ++i) {
-            if (typeof i == "string") {
-                log(`filteredModes key ${i} is a string!`);
-                i = Number(i);
-            }
-            const prevMode = (currentRefresh.length == 1) ?
-                this.modes[currentRefresh[0].modeIndex] : undefined;
-            const thisMode = this.modes[filteredModes[i]];
-            let pairable = false;
-            if (prevMode && pairableModes(prevMode, thisMode)) {
-                pairable = true;
-                if (i < filteredModes.length - 1) {
-                    log(`i ${i}`);
-                    log(`filteredModes[i + 1] ${filteredModes[i + 1]}`);
-                    const nextMode = this.modes[filteredModes[i + 1]];
-                    const pr = prevMode.refresh_rate;
-                    const tr = thisMode.refresh_rate;
-                    const nr = nextMode.refresh_rate;
-                    // Rates are in descending order so no need to use abs()
-                    // Don't pair if thisMode is closer to next mode than to
-                    // prevMode
-                    if ((pr - tr > tr - nr &&
-                                pairableModes(thisMode, nextMode)) ||
-                            // Nor if the refresh rates aren't an exact match
-                            // and next mode would have the same rounded value
-                            (tr != pr && wouldRoundTheSame(tr, nr))) {
-                        pairable = false;
-                    }
-                }
-            }
-            const newMode = {
-                modeIndex: filteredModes[i],
-                interlaced: thisMode.isInterlaced(),
-                underscan: false
-            };
-            if (pairable) {
-                if (newMode.interlaced)
-                    currentRefresh.push(newMode);
-                else
-                    currentRefresh.unshift(newMode);
-            } else {
-                currentRefresh = [newMode];
-                this.modeItems.push({refresh: thisMode.refresh_rate,
-                        modes: currentRefresh});
-            }
-        }
-        blog(`modeItems with raw refresh rates: ${logObject(this.modeItems)}`);
-        // Now convert refresh rates to unique but rounded strings
-        let uniqueRefreshes = this.modeItems.map(a => a.refresh);
-        let i = 0;
-        while (i < uniqueRefreshes.length) {
-            let ri = uniqueRefreshes[i];
-            let j = i + 1;
-            blog(`Loop condition for i ${i} j ${j}`); 
-            blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
-            if (j < uniqueRefreshes.length) {
-                blog(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
-                        `ri ${ri}: ${uniqueRefreshes[j] != ri}`);
-                blog("Math.round(uniqueRefreshes[j]) " +
-                    `${Math.round(uniqueRefreshes[j])} == ` +
-                    `Math.round(ri) ${Math.round(ri)}: ` +
-                    `${Math.round(uniqueRefreshes[j]) == Math.round(ri)}`);
-            }
-            for (j = i + 1; j < uniqueRefreshes.length &&
-                    uniqueRefreshes[j] != ri &&
-                    Math.round(uniqueRefreshes[j]) == Math.round(ri); ++j)
-            {
-                ++j;
-                blog(`Loop condition for i ${i} j ${j}`); 
-                blog(`j < uniqueRefreshes.length: ${j < uniqueRefreshes.length}`);
-                if (j < uniqueRefreshes.length) {
-                    blog(`uniqueRefreshes[j] ${uniqueRefreshes[j]} != ` +
-                            `ri ${ri}: ${uniqueRefreshes[j] != ri}`);
-                    blog("Math.round(uniqueRefreshes[j]) " +
-                        `${Math.round(uniqueRefreshes[j])} == ` +
-                        `Math.round(ri) ${Math.round(ri)}: ` +
-                        `${Math.round(uniqueRefreshes[j]) == Math.round(ri)}`);
-                }
-                --j;
-            }
-            --j;
-            blog(`j is ${j} for i ${i}`);
-            let rounding = 1;
-            if (j > i) {
-                for (let k = i + 1; k <= j; ++k) {
-                    const uk = uniqueRefreshes[k];
-                    const uk1 = uniqueRefreshes[k - 1];
-                    blog(`k ${k} uk ${uniqueRefreshes[k]} ` +
-                            `uk1 ${uniqueRefreshes[k - 1]}`);
-                    let rk, rk1;
-                    while ((rk = roundBy(uk, rounding)) ==
-                                    (rk1 = roundBy(uk1, rounding)) &&
-                            (rk != uk || rk1 != uk1)) {
-                        rounding *= 10;
-                        blog(`  rk ${rk} rk1 ${rk1} inc rounding to ${rounding}`);
-                    }
-                    blog(`  rk ${rk} rk1 ${rk1} done: rounding ${rounding}`);
-                }
-            }
-            for (let k = i; k <= j; ++k) {
-                this.modeItems[k].refresh = roundBy(uniqueRefreshes[k],
-                        rounding);
-            }
-            blog(`k loop ended with i ${j + 1}`);
-            if (j < i)
-                break;
-            i = j + 1;
-        }
-        // TODO: If the monitor supports underscan, add copies of modes
-        this.currentMode = undefined
-        this.currentSubMode = undefined
-        for (let mi = 0; mi < this.modeItems.length; ++mi) {
-            const m = this.modeItems[mi];
-            for (let sm = 0; sm < m.modes.length; ++sm) {
-                if (this.modes[m.modes[sm].modeIndex].isCurrent()) {
-                    this.currentSubMode = sm;
-                    this.currentMode = mi;
-                    break;
-                }
-                if (this.currentMode !== undefined)
-                    break;
-            }
-        }
-        this.debugModeItems();
-    }
-
-    debugModeItems() {
-        for (const r of this.modeItems) {
-            const sm = r.modes.map(m => `{i: ${m.modeIndex}, ` +
-                    `cur: ${this.modes[m.modeIndex].isCurrent()}, ` +
-                    `i: ${m.interlaced}, u: ${m.underscan}}`);
-            log(`${r.refresh} [${sm.join(',')}]`);
-        }
-    }
-
-    // Only updates this object's records
-    changeMode(newMode, newSub) {
-        let modeItem = this.modeItems[this.currentMode];
-        let subMode = modeItem.modes[this.currentSubMode];
-        let sysMode = this.modes[subMode.modeIndex];
-        log(`subMode for old selection ` +
-                `${this.currentMode}/${this.currentSubMode}:` +
-                `${logObject(subMode)}\n` +
-                `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
-        delete sysMode.properties['is-current'];
-        this.currentMode = newMode;
-        this.currentSubMode = newSub;
-        modeItem = this.modeItems[newMode];
-        subMode = modeItem.modes[newSub];
-        sysMode = this.modes[subMode.modeIndex];
-        log(`subMode for new selection ` +
-                `${newMode}/${newSub}:` +
-                `${logObject(subMode)}\n` +
-                `mi ref ${modeItem.refresh} sys ref ${sysMode.refresh_rate}`);
-        sysMode.properties['is-current'] = true;
-    }
-
-    // Gets a tuple for use as a monitor element in ApplyMonitorsConfig
-    getState() {
-        const currentMode = this.modes.find(m => m.isCurrent());
-        const props = this.properties["is-underscanning"] ?
-            { "enable-underscanning": true } : {};
-        return [this.connector, currentMode.id, props];
-    }
-
-    // Returns true if this Monitor has the same connector and refresh rates
-    // as other
-    compatible(other) {
-        if (!(other instanceof Monitor))
-            return false;
-        if (this.modeItems.length != other.modeItems.length)
-            return false;
-        for (let i = 0; i < this.modeItems.length; ++i) {
-            const tmi = this.modeItems[i];
-            const omi = other.modeItems[i];
-            if (tmi.refresh != omi.refresh)
-                return false;
-            if (tmi.modes.length != omi.modes.length)
-                return false;
-            if (tmi.modes.length == 2 &&
-                    tmi.modes[1].interlaced != omi.modes[1].interlaced)
-                return false;
-        }
-        return true;
     }
 }
 
@@ -364,16 +79,6 @@ class LogicalMonitor {
         this.monitors = arrayToObjects(ar[5],
                 m => new MonitorDetails(m), "MonitorDetails");
         this.properties = readProperties(ar[6]);
-        this.propertyVariants = ar[6];
-    }
-
-    // Gets a tuple for use as a logical_monitor element in ApplyMonitorsConfig
-    getState() {
-        const monitors = this.monitors.map(m => {
-            return displayState.monitors.find(m2 => m.equal(m2)).getState();
-        });
-        return [this.x, this.y, this.scale, this.transform, this.primary,
-               monitors];
     }
 }
 
@@ -434,89 +139,64 @@ const displayConfigXml = `<node>
 const DisplayConfigProxy = Gio.DBusProxy.makeProxyWrapper(displayConfigXml);
 
 let displayConfigDbus = null;
-
-var displayState = null;
-let monitorsChangedTag = 0;
-
-let ignoreSignal = false;
-
-function monitorsChangedHandler() {
-    // This signal gets raised when we've changed the state ourselves,
-    // but if it isn't the first time we've changed the state, calling
-    // GetCurrentState here has "is-current" on the old mode, not the new
-    // one, so we have to ignore that.
-    log(`MonitorsChanged: ignore ${ignoreSignal}`);
-    if (ignoreSignal) {
-        ignoreSignal = false;
-        return;
-    }
-    const oldState = displayState;
-    updateDisplayConfig();
-    let bigChange = false;
-    if (oldState && oldState.monitors.length == displayState.monitors.length) {
-        for (let i = 0; i < displayState.monitors.length; ++i) {
-            if (!displayState.monitors[i].compatible(oldState.monitors[i])) {
-                bigChange = true;
-                break;
-            }
-        }
-    } else {
-        bigChange = true;
-    }
-    if (bigChange && onMonitorsChanged)
-        onMonitorsChanged(displayState);
-    else if (!bigChange && onRefreshRateChanged)
-        onRefreshRateChanged(displayState);
-}
+let monitorsChangedTag = null;
 
 function enable() {
-    if (displayConfigDbus)
-        return;
-    displayConfigDbus = new DisplayConfigProxy(Gio.DBus.session,
-        "org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig");
-    monitorsChangedTag = displayConfigDbus.connectSignal("MonitorsChanged",
-        monitorsChangedHandler);
+    if (!displayConfigDbus)
+        displayConfigDbus = new DisplayConfigProxy(Gio.DBus.session,
+            "org.gnome.Mutter.DisplayConfig",
+            "/org/gnome/Mutter/DisplayConfig");
+    if (monitorsChangedTag == null)
+        monitorsChangedTag = displayConfigDbus.connectSignal("MonitorsChanged",
+            () => {
+                updateMonitorsState().then(state => {
+                    if (onMonitorsChanged)
+                        onMonitorsChanged(state);
+                }, error => {
+                    log("Error reading new state after MonitorsChanged signal");
+                    log(error);
+                });
+            });
 }
 
 function disable() {
     if (!displayConfigDbus)
         return;
-    displayConfigDbus.disconnectSignal(monitorsChangedTag);
+    if (monitorsChangedTag != null) {
+        displayConfigDbus.disconnectSignal(monitorsChangedTag);
+        monitorsChangedTag = null;
+    }
     displayConfigDbus = null;
     displayState = null;
     displays = [];
 }
 
-var onRefreshRateChanged = null;
-var onMonitorsChanged = null;
+let monitorsState = null;
 
-function updateDisplayConfig() {
-    const state = displayConfigDbus.GetCurrentStateSync();
-    displayState = {
-        serial: state[0], 
-        monitors: arrayToObjects(state[1], m => new Monitor(m), "Monitor"),
-        logical_monitors: arrayToObjects(state[2], m => new LogicalMonitor(m),
-                    "LogicalMonitor"),
-        properties: readProperties(state[3])
-    };
+function getMonitorsState() {
+    return new Promise((resolve, reject) => {
+        displayConfigDbus.GetCurrentStateRemote(function(state, error) {
+            if (error) {
+                reject(new Error("Unexpected result from GetCurrentState(): " +
+                    logObject(error)));
+            } else {
+                let serial = state[0];
+                if (serial instanceof GLib.Variant)
+                    serial = serial.deepUnpack();
+                resolve({
+                    serial,
+                    monitors: arrayToObjects(state[1],
+                            m => new Monitor(m), "Monitor"),
+                    logical_monitors: arrayToObjects(state[2],
+                            m => new LogicalMonitor(m), "LogicalMonitor"),
+                    properties: readProperties(state[3])
+                });
+            }
+        });
+    });
 }
 
-function changeMode(monitor, mode, subMode) {
-    monitor.changeMode(mode, subMode);
-    const logical_monitors = displayState.logical_monitors.map(lm =>
-            lm.getState());
-    ignoreSignal = true;
-    let layout_mode =
-        displayState.properties["supports-changing-layout-mode"] ?
-        displayState.properties["layout-mode"] : undefined;
-    if (layout_mode != 1 && layout_mode != 2)
-        layout_mode = undefined;
-    const props = layout_mode ? { "layout-mode": layout_mode } : {};
-    //log(`logical_monitors[0] ${logObject(logical_monitors[0])}`);
-    displayConfigDbus.ApplyMonitorsConfigSync(
-            displayState.serial,
-            1,  // Apply temporarily
-            logical_monitors,
-            props
-    );
+function updateMonitorsState() {
+    return getMonitorsState().then(state => monitorsState = state);
 }
+
