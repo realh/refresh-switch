@@ -18,13 +18,16 @@ imports.searchPath.push(directoryOfThisScript());
 
 const DispConf = imports.dispconf;
 const Model = imports.model;
+const {logObject} = imports.util;
+
+let model = null;
 
 function showState(state) {
     log(`New MonitorsState with serial ${state.serial}`);
     for (const m of state.monitors) {
         log(`Monitor ${m.connector} mode ${m.currentMode}`);
     }
-    const model = Model.getStateModel(state);
+    model = Model.getStateModel(state);
     log(Model.describeModel(model));
 }
 
@@ -36,4 +39,17 @@ DispConf.updateMonitorsState().then(showState, error => {
 });
 
 const mainLoop = GLib.MainLoop.new(null, false);
+
+function changeMode(group) {
+    const mon = model.monitors[0];
+    const con = mon.connector;
+    const mode = mon.modeGroups[group].modes[0].id;
+    log(`Changing mode: ${con}, ${mode}`);
+    DispConf.changeMode(con, mode);
+    return false;
+}
+
+GLib.timeout_add(0, 2000, () => changeMode(2));
+GLib.timeout_add(0, 5000, () => changeMode(0));
+
 mainLoop.run();

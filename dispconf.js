@@ -72,6 +72,10 @@ class Monitor extends MonitorDetails {
         return this.properties["is-underscanning"] !== undefined;
     }
 
+    isUnderscanning() {
+        return this.properties["is-underscanning"];
+    }
+
     // Returns an array of mode ids with the same width and height as current
     // mode
     getFilteredModes() {
@@ -216,3 +220,54 @@ function updateMonitorsState() {
     return getMonitorsState().then(state => monitorsState = state);
 }
 
+// monId: connector Id for monitor
+// modeId: Id of mode to select for this monitor
+// returns false if mode is unchanged
+function changeMode(monId, modeId, underscan) {
+    for (const mon of monitorsState.monitors) {
+        if (mon.connector == monId) {
+            if (mon.canUnderscan()) {
+                if (underscan != true)
+                    underscan = false;
+            } else if (underscan !== undefined) {
+                if (underscan)
+                    log(`Monitor ${monId} does not support underscan`);
+                underscan = undefined;
+            }
+            if (mon.currentMode == modeId && mon.isUnderscanning() != underscan)
+                return false;
+            for (const k in mon.modes) {
+                let mode = mon.modes[k];
+                mode.properties["is-current"] = (mode.id == modeId);
+            }
+            mon.currentMode = modeId;
+            mon.properties["is-underscanning"] = underscan;
+        }
+    }
+    // Build new logical_monitors configuration for ApplyMonitorsConfig
+    let logicalMonitors = monitorsState.logical_monitors.map(lm => {
+        let mons = lm.monitors.map(mon => {
+            mon = monitorsState.monitors.find(
+                    m => m.connector == mon.connector);
+            let props = mon.canUnderscan() ? 
+                { "enable-underscanning": mon.isUnderscanning() } : {}
+            return [mon.connector, mon.currentMode, props];
+        });
+        return [lm.x, lm.y, lm.scale, lm.transform, lm.primary, mons];
+    });
+    let layoutMode =
+        monitorsState.properties["supports-changing-layout-mode"] ?
+        monitorsState.properties["layout-mode"] : undefined;
+    let props = layoutMode === undefined ? {} : {"layout-mode": layoutMode};
+    /*
+    let error = displayConfigDbus.ApplyMonitorsConfigSync(monitorsState.serial,
+            1, // config is temporary
+            logicalMonitors, props);
+    log(`Result of ApplyMonitorsConfig: ${error}`);
+    */
+    displayConfigDbus.ApplyMonitorsConfigRemote(monitorsState.serial,
+            1, // config is temporary
+            logicalMonitors, props, error => {
+        log(`Result of ApplyMonitorsConfig: ${error}`);
+    });
+}
