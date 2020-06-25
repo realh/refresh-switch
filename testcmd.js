@@ -17,12 +17,15 @@ function directoryOfThisScript() {
 imports.searchPath.push(directoryOfThisScript());
 
 const DispConf = imports.dispconf;
+const Model = imports.model;
 
 function showState(state) {
     log(`New MonitorsState with serial ${state.serial}`);
     for (const m of state.monitors) {
         log(`Monitor ${m.connector} mode ${m.currentMode}`);
     }
+    const model = Model.getStateModel(state);
+    log(Model.describeModel(model));
 }
 
 DispConf.onMonitorsChanged = showState;

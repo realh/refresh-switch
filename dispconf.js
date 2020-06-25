@@ -60,12 +60,28 @@ class Monitor extends MonitorDetails {
         this.modes = this.modes.reduce((acc, v) => {
             acc[v.id] = v;
             if (v.properties["is-current"]) {
-                delete v.properties["is-current"];
+                //delete v.properties["is-current"];
                 this.currentMode = v.id;
             }
             return acc;
         }, {});
         this.properties = readProperties(ar[2]);
+    }
+
+    canUnderscan() {
+        return this.properties["is-underscanning"] !== undefined;
+    }
+
+    // Returns an array of mode ids with the same width and height as current
+    // mode
+    getFilteredModes() {
+        if (this.currentMode === undefined)
+            return [];
+        const cm = this.modes[this.currentMode];
+        const w = cm.width;
+        const h = cm.height;
+        return Object.keys(this.modes).filter(k =>
+                this.modes[k].width == w && this.modes[k].height == h);
     }
 }
 
