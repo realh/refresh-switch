@@ -268,6 +268,8 @@ function changeMode(monId, modeId, underscan) {
     displayConfigDbus.ApplyMonitorsConfigRemote(monitorsState.serial,
             1, // config is temporary
             logicalMonitors, props, error => {
-        log(`Result of ApplyMonitorsConfig: ${error}`);
+        if (error && Object.keys(error).length !== 0) {
+            log(`Result of ApplyMonitorsConfig: ${logObject(error)}`);
+        }
     });
 }

@@ -78,7 +78,7 @@ function groupModes(modes) {
     let groups = [];
     let group = [];
     for (let i = 0; i < modes.length; ++i) {
-        const prevMode = (group.length == 1) ? modes[i - 1] : undefined;
+        const prevMode = (i >= 1) ? modes[i - 1] : undefined;
         const thisMode = modes[i];
         let pairable = false;
         // Can thisMode be paired with prevMode?
@@ -114,7 +114,7 @@ function groupModes(modes) {
     });
 }
 
-function getGroupLabels(group) {
+function getGroupLabels(group, showCurrent) {
     let labels = [group.refresh];
     let m = group.modes[0];
     if (group.modes.length == 1) {
@@ -122,8 +122,8 @@ function getGroupLabels(group) {
             labels[0] += " (i)";
         if (m.preferred)
             labels[0] += '*';
-        if (m.current)
-            labels[0] = `_${labels[0]}_`;
+        if (showCurrent && m.current)
+            labels[0] = `_${labels[0]}_`
     } else {
         for (let i = 1; i < group.modes.length; ++i) {
             m = group.modes[i];
@@ -136,7 +136,7 @@ function getGroupLabels(group) {
                 l = "I + U";
             if (m.preferred && !m.underscan)
                 l += '*';
-            if (m.current)
+            if (showCurrent && m.current)
                 l = `_${l}_`;
             labels.push(l);
         }
@@ -160,13 +160,13 @@ function getStateModel(state) {
 }
 
 function describeGroup(group) {
-    return `{${group.refresh} [${getGroupLabels(group).join(", ")}]}`;
+    return `{${group.refresh} [${getGroupLabels(group, true).join(", ")}]}`;
 }
 
 function describeMonitor(monitor) {
     let s = `  Monitor ${monitor.connector} {`;
     for (const g of monitor.modeGroups) {
-        s += `\n  ${describeGroup(g)}`;
+        s += `\n    ${describeGroup(g)}`;
     }
     s += "\n  }";
     return s;
