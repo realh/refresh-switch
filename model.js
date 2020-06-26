@@ -159,6 +159,32 @@ function getStateModel(state) {
     return { serial: state.serial, columns, monitors };
 }
 
+function modelsAreCompatible(mod1, mod2) {
+    if (mod1.monitors.length != mod2.monitors.length)
+        return false;
+    if (mod1.columns != mod2.columns)
+        return false;
+    for (let i = 0; i < mod1.monitors.length; ++i)
+    {
+        let mon1 = mod1.monitors[i];
+        let mon2 = mod2.monitors[i];
+        if (mon1.connector != mon2.connector ||
+                mon1.modeGroups.length != mon2.modeGroups.length)
+            return false;
+        for (let j = 0; j < mon1.modeGroups.length; ++j) {
+            let g1 = mon1.modeGroups[j];
+            let g2 = mon2.modeGroups[j];
+            if (g1.refresh != g2.refresh || g1.modes.length != g2.modes.length)
+                return false;
+        }
+        for (let k = 0; k < g1.length; ++k) {
+            if (g1[k].id != g2[k].id)
+                return false;
+        }
+    }
+    return true;
+}
+
 function describeGroup(group) {
     return `{${group.refresh} [${getGroupLabels(group, true).join(", ")}]}`;
 }
