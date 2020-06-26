@@ -74,7 +74,7 @@ function getModesForMonitor(monitor) {
     return modes;
 }
 
-function groupModes(modes) {
+function groupModes(modes, canUnderscan) {
     let groups = [];
     let group = [];
     for (let i = 0; i < modes.length; ++i) {
@@ -107,7 +107,17 @@ function groupModes(modes) {
             groups.push(group);
         }
     }
-    // TODO: Add modes with underscan
+    if (canUnderscan) {
+        for (const g of groups) {
+            const l = g.length;
+            for (let i = 0; i < l; ++i) {
+                let mu = {};
+                Object.assign(mu, g[i]);
+                mu.underscan = true;
+                g.push(mu);
+            }
+        }
+    }
     return groups.map(g => {
         return { refresh: `${Math.round(g[0].refresh * 1000) / 1000}`,
                  modes: g };
@@ -147,10 +157,11 @@ function getGroupLabels(group, showCurrent) {
 function getStateModel(state) {
     let columns = 1;
     let monitors = state.monitors.map(ms => {
+        const canUnderscan = ms.canUnderscan();
         const monitor = {
             connector: ms.connector,
-            canUnderscan: ms.canUnderscan(),
-            modeGroups: groupModes(getModesForMonitor(ms))
+            canUnderscan,
+            modeGroups: groupModes(getModesForMonitor(ms), canUnderscan)
         }
         for (const g of monitor.modeGroups)
             columns = Math.max(columns, g.modes.length);
