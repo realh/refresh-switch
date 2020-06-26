@@ -111,8 +111,7 @@ function groupModes(modes, canUnderscan) {
         for (const g of groups) {
             const l = g.length;
             for (let i = 0; i < l; ++i) {
-                let mu = {};
-                Object.assign(mu, g[i]);
+                let mu = Object.assign({}, g[i]);
                 mu.underscan = true;
                 g.push(mu);
             }
