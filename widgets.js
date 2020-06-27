@@ -17,7 +17,7 @@ const [DispConf, logError, logObject] = (function() {
 //      Map<"monitor.connector,mode.id,underscan:bool", Gtk.Radio>]
 function buildGrid(model, callback) {
     if (!model.monitors.length)
-        return Gtk.Label.new("No suitable monitors");
+        return [Gtk.Label.new("No suitable monitors"), null];
     const SPACING = 4;
     const gridWidget = new Gtk.Grid({
         column_homogeneous: false,

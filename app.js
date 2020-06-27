@@ -120,9 +120,11 @@ class SwitchRefreshApp extends Gtk.Application {
                     this.grid.destroy();
                     this.grid = null;
                 }
-                [this.grid, this.radios] = Widgets.buildGrid(model,
+                const [g, r] = Widgets.buildGrid(model,
                         (_, monitor, mode) =>
                             this.onModeSelected(monitor, mode));
+                this.grid = g;
+                this.radios = r;
                 this.box.pack_start(this.grid, false, false, 8);
                 this.grid.show_all();
             } else {
