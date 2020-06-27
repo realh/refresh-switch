@@ -123,36 +123,6 @@ function groupModes(modes, canUnderscan) {
     });
 }
 
-function getGroupLabels(group, showCurrent) {
-    let labels = [group.refresh];
-    let m = group.modes[0];
-    if (group.modes.length == 1) {
-        if (m.interlaced)
-            labels[0] += " (i)";
-        if (m.preferred)
-            labels[0] += '*';
-        if (showCurrent && m.current)
-            labels[0] = `_${labels[0]}_`
-    } else {
-        for (let i = 1; i < group.modes.length; ++i) {
-            m = group.modes[i];
-            let l = m.refresh;
-            if (m.interlaced && !m.underscan)
-                l = "Interlaced";
-            else if (!m.interlaced && m.underscan)
-                l = "Underscan";
-            else if (m.interlaced && m.underscan)
-                l = "I + U";
-            if (m.preferred && !m.underscan)
-                l += '*';
-            if (showCurrent && m.current)
-                l = `_${l}_`;
-            labels.push(l);
-        }
-    }
-    return labels;
-}
-
 function getStateModel(state) {
     let columns = 1;
     let monitors = state.monitors.map(ms => {
