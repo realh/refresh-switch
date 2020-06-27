@@ -1,14 +1,9 @@
-const Atk = imports.gi.Atk;
-const Clutter = imports.gi.Clutter;
-const Gio = imports.gi.Gio;
-const GObject = imports.gi.GObject;
-const St = imports.gi.St;
+const {Atk, Clutter, Gio, GObject, St} = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
-
-var [init, enable, disable] = (function() {
+const Util = imports.misc.util;
 
 const indicatorName = Me.metadata.name + " indicator";
 
@@ -27,7 +22,7 @@ class RefreshSwitchButton extends PanelMenu.Button {
     vfunc_event(event) {
         if ((event.type() == Clutter.EventType.TOUCH_BEGIN ||
                     event.type() == Clutter.EventType.BUTTON_PRESS))
-            ExtensionUtils.openPrefs();
+            runApplet();
 
         return Clutter.EVENT_PROPAGATE;
     }
@@ -49,8 +44,12 @@ function disable() {
         indicator.destroy();
         indicator = null;
     }
+    runApplet(true);
 }
 
-return [init, enable, disable];
-
-})();
+function runApplet(quit) {
+    let args = ["gjs", Me.dir.get_path() + "/app.js"];
+    if (quit)
+        args.push("--quit");
+    Util.spawn(args);
+}
