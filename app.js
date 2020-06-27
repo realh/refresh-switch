@@ -85,6 +85,7 @@ class SwitchRefreshApp extends Gtk.Application {
     onStateChanged(state) {
         const model = Model.getStateModel(state);
         if (!this.model || !Model.modelsAreCompatible(this.model, model)) {
+            log("Major state change, rebuilding grid");
             if (this.grid) {
                 this.grid.destroy();
                 this.grid = null;
@@ -100,10 +101,17 @@ class SwitchRefreshApp extends Gtk.Application {
                 for (const group of mon.modeGroups) {
                     for (const mode of group.modes) {
                         if (mode.current) {
-                            const rad = this.radios.get(
-                              `${mon.connector},${mode.id},${mode.underscan}`);
-                            if (!rad.get_active())
+                            const key = `${mon.connector},${mode.id},` +
+                                `${mode.underscan}`;
+                            const rad = this.radios.get(key);
+                            if (!rad) {
+                                log(`No radio for ${key}`);
+                            } else if (!rad.get_active()) {
+                                log(`Activating radio for ${key}`);
                                 rad.set_active();
+                            } else {
+                                log(`Radio for ${key} already active`);
+                            }
                             done = true;
                             break;
                         }
@@ -113,12 +121,14 @@ class SwitchRefreshApp extends Gtk.Application {
                 }
             }
         }
+        this.model = model;
         this.window.show_all();
     }
 
     onModeSelected(monitor, mode) {
         log(`Switching ${monitor.connector} to ${mode.id}` +
                 (mode.underscan ? " (underscan)" : ""));
+        DispConf.changeMode(monitor.connector, mode.id, mode.underscan);
     }
 });
 

@@ -141,26 +141,46 @@ function getStateModel(state) {
 }
 
 function modelsAreCompatible(mod1, mod2) {
-    if (mod1.monitors.length != mod2.monitors.length)
+    if (mod1.monitors.length != mod2.monitors.length) {
+        log(`States have incompatible monitor lengths:` +
+            `${mod1.monitors.length} vs ${mod2.monitors.length}`);
         return false;
-    if (mod1.columns != mod2.columns)
+    }
+    if (mod1.columns != mod2.columns) {
+        log(`States have incompatible columns: ` +
+                `${mod1.columns} vs ${mod2.columns}`)
         return false;
+    }
     for (let i = 0; i < mod1.monitors.length; ++i)
     {
         let mon1 = mod1.monitors[i];
         let mon2 = mod2.monitors[i];
         if (mon1.connector != mon2.connector ||
-                mon1.modeGroups.length != mon2.modeGroups.length)
+                mon1.modeGroups.length != mon2.modeGroups.length) {
+            log(`States have different monitors at index ${i}: ` +
+                    `${mon1.connector} vs ${mon2.connector} or ` +
+                    `${mon1.modeGroups.length} vs ${mon2.modeGroups.length}`);
             return false;
+        }
         for (let j = 0; j < mon1.modeGroups.length; ++j) {
             let g1 = mon1.modeGroups[j];
             let g2 = mon2.modeGroups[j];
             if (g1.refresh != g2.refresh || g1.modes.length != g2.modes.length)
+            {
+                log(`States have different mode groups for monitor ` +
+                        `${mon1.connector}: ` +
+                        `${g1.refresh} vs ${g2.refresh} or ` +
+                        `${g1.modes.length} vs ${g2.modes.length}`);
                 return false;
+            }
         }
         for (let k = 0; k < g1.length; ++k) {
-            if (g1[k].id != g2[k].id)
+            if (g1[k].id != g2[k].id) {
+                log(`States have different modes for monitor ` +
+                        `${mon1.connector} refresh ${g1.refresh} ` +
+                        `${k}: ${g1[k].id} vs ${g2[k].id}`);
                 return false;
+            }
         }
     }
     return true;
