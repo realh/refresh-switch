@@ -27,29 +27,28 @@ const SwitchRefreshApp = GObject.registerClass(
 class SwitchRefreshApp extends Gtk.Application {
     _init() {
         super._init({application_id: "switch-refresh.realh.co.uk",
-                flags: Gio.ApplicationFlags.FLAGS_NONE});
+                flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE});
     }
 
-    vfunc_startup() {
-        super.vfunc_startup();
-        const settings = Gtk.Settings.get_default();
-        if (settings) {
-            settings.set_property("gtk-application-prefer-dark-theme",
-                    true);
-        } else {
-            log("GtkSettings not available to set dark theme");
-        }
-        DispConf.enable();
-        DispConf.onMonitorsChanged = (state) => this.onStateChanged(state);
-    }
-
-    vfunc_activate() {
-        if (this.window && this.window.is_visible())
+    vfunc_command_line(cmdLine) {
+        const args = cmdLine.get_arguments();
+        if (args.indexOf("--quit") >= 0 ||
+                (this.window && this.window.is_visible()))
         {
+            log("Quitting applet");
             this.quit();
-            return;
+            return 0;
         }
         if (!this.window) {
+            const settings = Gtk.Settings.get_default();
+            if (settings) {
+                settings.set_property("gtk-application-prefer-dark-theme",
+                        true);
+            } else {
+                log("GtkSettings not available to set dark theme");
+            }
+            DispConf.enable();
+            DispConf.onMonitorsChanged = (state) => this.onStateChanged(state);
             this.window = new Gtk.ApplicationWindow({application: this});
             this.window.set_title("Display Refresh Switcher");
             // Need an outer box with opposite orientation so padding works in
@@ -62,7 +61,11 @@ class SwitchRefreshApp extends Gtk.Application {
         }
         DispConf.updateMonitorsState().
             then(state => this.onStateChanged(state)).
-            catch(error => this.showError(error));
+            catch(error => {
+                this.showError(error)
+                return 1;
+            });
+        return 0;
     }
 
     showError(error) {
