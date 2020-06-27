@@ -173,13 +173,13 @@ function modelsAreCompatible(mod1, mod2) {
                         `${g1.modes.length} vs ${g2.modes.length}`);
                 return false;
             }
-        }
-        for (let k = 0; k < g1.length; ++k) {
-            if (g1[k].id != g2[k].id) {
-                log(`States have different modes for monitor ` +
-                        `${mon1.connector} refresh ${g1.refresh} ` +
-                        `${k}: ${g1[k].id} vs ${g2[k].id}`);
-                return false;
+            for (let k = 0; k < g1.length; ++k) {
+                if (g1[k].id != g2[k].id) {
+                    log(`States have different modes for monitor ` +
+                            `${mon1.connector} refresh ${g1.refresh} ` +
+                            `${k}: ${g1[k].id} vs ${g2[k].id}`);
+                    return false;
+                }
             }
         }
     }

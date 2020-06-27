@@ -172,9 +172,9 @@ function enable() {
                 updateMonitorsState().then(state => {
                     if (onMonitorsChanged)
                         onMonitorsChanged(state);
-                }, error => {
-                    log("Error reading new state after MonitorsChanged signal");
-                    log(error);
+                }).catch (error => {
+                    logError(error,
+                        "Error reading new state after MonitorsChanged signal");
                 });
             });
 }

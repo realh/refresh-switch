@@ -56,13 +56,9 @@ class SwitchRefreshApp extends Gtk.Application {
             this.outerBox.pack_start(this.box, false, false, 8);
             this.window.add(this.outerBox);
         }
-        DispConf.updateMonitorsState().then(state => {
-            try {
-                this.onStateChanged(state);
-            } catch (error) {
-                this.showError(error);
-            }
-        }, error => this.showError(error));
+        DispConf.updateMonitorsState().
+            then(state => this.onStateChanged(state)).
+            catch(error => this.showError(error));
     }
 
     showError(error) {
@@ -83,45 +79,49 @@ class SwitchRefreshApp extends Gtk.Application {
     }
 
     onStateChanged(state) {
-        const model = Model.getStateModel(state);
-        if (!this.model || !Model.modelsAreCompatible(this.model, model)) {
-            log("Major state change, rebuilding grid");
-            if (this.grid) {
-                this.grid.destroy();
-                this.grid = null;
-            }
-            [this.grid, this.radios] = Widgets.buildGrid(model,
-                    (_, monitor, mode) =>
-                        this.onModeSelected(monitor, mode));
-            this.box.pack_start(this.grid, false, false, 8);
-            this.grid.show_all();
-        } else {
-            for (const mon of model.monitors) {
-                let done = false;
-                for (const group of mon.modeGroups) {
-                    for (const mode of group.modes) {
-                        if (mode.current) {
-                            const key = `${mon.connector},${mode.id},` +
-                                `${mode.underscan}`;
-                            const rad = this.radios.get(key);
-                            if (!rad) {
-                                log(`No radio for ${key}`);
-                            } else if (!rad.get_active()) {
-                                log(`Activating radio for ${key}`);
-                                rad.set_active();
-                            } else {
-                                log(`Radio for ${key} already active`);
+        try {
+            const model = Model.getStateModel(state);
+            if (!this.model || !Model.modelsAreCompatible(this.model, model)) {
+                log("Major state change, rebuilding grid");
+                if (this.grid) {
+                    this.grid.destroy();
+                    this.grid = null;
+                }
+                [this.grid, this.radios] = Widgets.buildGrid(model,
+                        (_, monitor, mode) =>
+                            this.onModeSelected(monitor, mode));
+                this.box.pack_start(this.grid, false, false, 8);
+                this.grid.show_all();
+            } else {
+                for (const mon of model.monitors) {
+                    let done = false;
+                    for (const group of mon.modeGroups) {
+                        for (const mode of group.modes) {
+                            if (mode.current) {
+                                const key = `${mon.connector},${mode.id},` +
+                                    `${mode.underscan}`;
+                                const rad = this.radios.get(key);
+                                if (!rad) {
+                                    log(`No radio for ${key}`);
+                                } else if (!rad.get_active()) {
+                                    log(`Activating radio for ${key}`);
+                                    rad.set_active();
+                                } else {
+                                    log(`Radio for ${key} already active`);
+                                }
+                                done = true;
+                                break;
                             }
-                            done = true;
-                            break;
                         }
+                        if (done)
+                            break;
                     }
-                    if (done)
-                        break;
                 }
             }
+            this.model = model;
+        } catch (error) {
+            logError(error, "Error updating radios");
         }
-        this.model = model;
         this.window.show_all();
     }
 
