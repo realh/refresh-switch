@@ -35,7 +35,7 @@ class SwitchRefreshApp extends Gtk.Application {
     vfunc_activate() {
         if (this.window && this.window.is_visible())
         {
-            this.window.hide();
+            this.quit();
             return;
         }
         if (!this.window) {
