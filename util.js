@@ -10,6 +10,8 @@ function logObject(o, indent) {
             return "function";
         } else if (o instanceof Variant) {
             return `Variant(${o.deepUnpack()})`;
+        } else if (o instanceof Error) {
+            return `${o} at ${o.fileName}: line ${o.lineNumber}`;
         } else {
             if (!indent)
                 indent = "";
