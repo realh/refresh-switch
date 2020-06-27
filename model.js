@@ -136,7 +136,7 @@ function getStateModel(state) {
             columns = Math.max(columns, g.modes.length);
         return monitor;
     }).filter(mon => mon.modeGroups.length > 1 ||
-        mon.modeGroups[0].modes[length] > 1);
+        mon.modeGroups[0].modes[0] > 1);
     return { serial: state.serial, columns, monitors };
 }
 
