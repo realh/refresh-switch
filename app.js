@@ -39,6 +39,13 @@ class SwitchRefreshApp extends Gtk.Application {
             return;
         }
         if (!this.window) {
+            const settings = Gtk.Settings.get_default();
+            if (settings) {
+                settings.set_property("gtk-application-prefer-dark-theme",
+                        true);
+            } else {
+                log("GtkSettings not available to set dark theme");
+            }
             this.window = new Gtk.ApplicationWindow({application: this});
             this.window.set_title("Display Refresh Switcher");
             // Need an outer box with opposite orientation so padding works in
@@ -48,14 +55,14 @@ class SwitchRefreshApp extends Gtk.Application {
             this.box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL}, 0);
             this.outerBox.pack_start(this.box, false, false, 8);
             this.window.add(this.outerBox);
-            DispConf.updateMonitorsState().then(state => {
-                try {
-                    this.onStateChanged(state);
-                } catch (error) {
-                    this.showError(error);
-                }
-            }, error => this.showError(error));
         }
+        DispConf.updateMonitorsState().then(state => {
+            try {
+                this.onStateChanged(state);
+            } catch (error) {
+                this.showError(error);
+            }
+        }, error => this.showError(error));
     }
 
     showError(error) {
