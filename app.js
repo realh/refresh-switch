@@ -1,5 +1,6 @@
+imports.gi.versions.Gdk = "3.0";
 imports.gi.versions.Gtk = "3.0";
-const {GLib, Gio, GObject, Gtk} = imports.gi;
+const {GLib, Gio, GObject, Gdk, Gtk} = imports.gi;
 
 function directoryOfThisScript() {
     const re = /@(.+?)(:\d+)+$/;
@@ -39,6 +40,14 @@ class SwitchRefreshApp extends Gtk.Application {
             this.quit();
             return 0;
         }
+        let x = undefined;
+        let y = undefined;
+        for (const a of args) {
+            if (a.indexOf("--x=") === 0)
+                x = Number(a.slice(4));
+            else if (a.indexOf("--y=") === 0)
+                y = Number(a.slice(4));
+        }
         if (!this.window) {
             const settings = Gtk.Settings.get_default();
             if (settings) {
@@ -58,6 +67,23 @@ class SwitchRefreshApp extends Gtk.Application {
             this.box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL}, 0);
             this.outerBox.pack_start(this.box, false, false, 8);
             this.window.add(this.outerBox);
+        }
+        if (x !== undefined && y !== undefined) {
+            let gravity;
+            if (x > 640) {
+                if (y > 480)
+                    gravity = Gdk.Gravity.SOUTH_EAST;
+                else
+                    gravity = Gdk.Gravity.NORTH_EAST;
+            } else {
+                if (y > 480)
+                    gravity = Gdk.Gravity.SOUTH_WEST;
+                else
+                    gravity = Gdk.Gravity.NORTH_WEST;
+            }
+            this.window.set_gravity(gravity);
+            this.window.move(x, y);
+            // I think Wyland ignores this, but oh well, I tried
         }
         DispConf.updateMonitorsState().
             then(state => this.onStateChanged(state)).
