@@ -82,7 +82,7 @@ class RefreshSwitchApp extends Gtk.Application {
             }
             this.window.set_gravity(gravity);
             this.window.move(x, y);
-            // I think Wyland ignores this, but oh well, I tried
+            // I think Wayland ignores this, but oh well, I tried
         }
         DispConf.updateMonitorsState().
             then(state => this.onStateChanged(state)).
