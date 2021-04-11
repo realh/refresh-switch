@@ -12,9 +12,9 @@ const [DispConf, logError, logObject] = (function() {
 })();
 
 // For model see model.js
-// callback is called with (Gtk.Radio, Monitor, Mode)
+// callback is called with (Gtk.CheckButton, Monitor, Mode)
 // Returns [Gtk.Grid,
-//      Map<"monitor.connector,mode.id,underscan:bool", Gtk.Radio>]
+//      Map<"monitor.connector,mode.id,underscan:bool", Gtk.CheckButton>]
 function buildGrid(model, callback) {
     if (!model.monitors.length)
         return [Gtk.Label.new("No suitable monitors"), null];
@@ -70,12 +70,14 @@ function buildGrid(model, callback) {
                     else    // Shouldn't happen
                         label = "-";
                 }
-                const radio = Gtk.RadioButton.new_with_label_from_widget(
-                        radGroup, label);
+                const radio = Gtk.CheckButton.new_with_label(label);
+                if (radGroup) {
+                    radio.set_group(radGroup);
+                } else {
+                    radGroup = radio;
+                }
                 radios.set(`${monitor.connector},${mode.id},${mode.underscan}`,
                         radio);
-                if (mgn == 0 && mdn == 0)
-                    radGroup = radio;
                 radio.set_active(mode.current);
                 radio.connect("toggled", r => {
                     if (r.get_active()) {
@@ -87,6 +89,5 @@ function buildGrid(model, callback) {
             ++row;
         }
     }
-    gridWidget.show_all();
     return [gridWidget, radios];
 }

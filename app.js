@@ -1,5 +1,5 @@
-imports.gi.versions.Gdk = "3.0";
-imports.gi.versions.Gtk = "3.0";
+imports.gi.versions.Gdk = "4.0";
+imports.gi.versions.Gtk = "4.0";
 const {GLib, Gio, GObject, Gdk, Gtk} = imports.gi;
 
 function directoryOfThisScript() {
@@ -60,13 +60,12 @@ class SwitchRefreshApp extends Gtk.Application {
             DispConf.onMonitorsChanged = (state) => this.onStateChanged(state);
             this.window = new Gtk.ApplicationWindow({application: this});
             this.window.set_title("Display Refresh Switcher");
-            // Need an outer box with opposite orientation so padding works in
-            // both directions
-            this.outerBox = new Gtk.Box(
-                    {orientation: Gtk.Orientation.HORIZONTAL}, 0);
-            this.box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL}, 0);
-            this.outerBox.pack_start(this.box, false, false, 8);
-            this.window.add(this.outerBox);
+            this.box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL}, 8);
+            this.box.set_margin_start(8);
+            this.box.set_margin_end(8);
+            this.box.set_margin_top(8);
+            this.box.set_margin_bottom(8);
+            this.window.set_child(this.box);
         }
         if (x !== undefined && y !== undefined) {
             let gravity;
@@ -91,6 +90,7 @@ class SwitchRefreshApp extends Gtk.Application {
                 this.showError(error)
                 return 1;
             });
+        this.window.present();
         return 0;
     }
 
@@ -98,17 +98,17 @@ class SwitchRefreshApp extends Gtk.Application {
         log(logObject(error));
         error = `${error}`;
         if (this.box) {
-            let children = this.box.get_children();
-            if (children && children.length)
-                children[0].destroy();
+            if (this.label) {
+                this.box.remove(this.label);
+                this.label = null;
+            }
             if (this.grid) {
-                this.grid.destroy();
+                this.box.remove(this.grid);
                 this.grid = null;
             }
-            const label = Gtk.Label.new(`${error}`);
-            this.box.pack_start(label, false, false, 8);
+            this.label = Gtk.Label.new(error);
+            this.box.append(this.label);
         }
-        this.window.show_all();
     }
 
     onStateChanged(state) {
@@ -125,8 +125,7 @@ class SwitchRefreshApp extends Gtk.Application {
                             this.onModeSelected(monitor, mode));
                 this.grid = g;
                 this.radios = r;
-                this.box.pack_start(this.grid, false, false, 8);
-                this.grid.show_all();
+                this.box.append(this.grid);
             } else {
                 for (const mon of model.monitors) {
                     let done = false;
@@ -157,7 +156,6 @@ class SwitchRefreshApp extends Gtk.Application {
         } catch (error) {
             logError(error, "Error updating radios");
         }
-        this.window.show_all();
     }
 
     onModeSelected(monitor, mode) {
