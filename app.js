@@ -23,11 +23,11 @@ const Model = imports.model;
 const {logObject} = imports.util;
 const Widgets = imports.widgets;
 
-const SwitchRefreshApp = GObject.registerClass(
-        {GTypeName: "SwitchRefreshApp"},
-class SwitchRefreshApp extends Gtk.Application {
+const RefreshSwitchApp = GObject.registerClass(
+        {GTypeName: "RefreshSwitchApp"},
+class RefreshSwitchApp extends Gtk.Application {
     _init() {
-        super._init({application_id: "switch-refresh.realh.co.uk",
+        super._init({application_id: "uk.co.realh.refresh_switch",
                 flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE});
     }
 
@@ -165,5 +165,5 @@ class SwitchRefreshApp extends Gtk.Application {
     }
 });
 
-const app = new SwitchRefreshApp();
+const app = new RefreshSwitchApp();
 app.run(ARGV);
