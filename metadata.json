@@ -3,6 +3,6 @@
     "name": "Refresh Rate Quick Switcher",
     "description": "Makes it quicker and easier to change a siaplay's refresh rate",
     "version": 1,
-    "shell-version": [ "3.36" ],
+    "shell-version": [ "40" ],
     "url": "https://github.com/realh/refresh-switch"
 }
