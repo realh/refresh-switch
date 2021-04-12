@@ -8,8 +8,10 @@ The UI is implemented as a GTK window in a separate process from gnome-shell.
 This made it easier to test, and makes it easier to use in case the display is
 a TV which overscans in some modes; the window stays open after selecting a
 mode, whereas a menu would close, and the panel might be off-screen due to
-overscan. The disadvantage of this design is that Wayland and/or modern mutter
-don't allow an application to control the position of its windows.
+overscan, so you'd have to do some blind clicking to find the right icon again.
+The disadvantage of this design is that Wayland and/or modern mutter don't
+allow an application to control the position of its windows, so the window
+tends to appear a long way from the panel icon.
 
 I also intended to include a control for turning fullscreen redirect on and
 off, but this is more awkward to implement with a separate process, and there
