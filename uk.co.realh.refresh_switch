@@ -1,3 +1,4 @@
+#!/usr/bin/env gjs
 imports.gi.versions.Gdk = "4.0";
 imports.gi.versions.Gtk = "4.0";
 const {GLib, Gio, GObject, Gdk, Gtk} = imports.gi;
@@ -60,6 +61,7 @@ class RefreshSwitchApp extends Gtk.Application {
             DispConf.onMonitorsChanged = (state) => this.onStateChanged(state);
             this.window = new Gtk.ApplicationWindow({application: this});
             this.window.set_title("Display Refresh Switcher");
+            this.window.set_icon_name("video-display-symbolic");
             this.box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL}, 8);
             this.box.set_margin_start(8);
             this.box.set_margin_end(8);
