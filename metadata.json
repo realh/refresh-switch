@@ -3,6 +3,6 @@
     "name": "Refresh Rate Quick Switcher",
     "description": "Makes it quicker and easier to change a display's refresh rate",
     "version": 3,
-    "shell-version": [ "3.36", "3.38", "40", "42" ],
+    "shell-version": [ "3.36", "3.38", "40", "41", "42" ],
     "url": "https://github.com/realh/refresh-switch"
 }
