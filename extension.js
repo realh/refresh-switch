@@ -21,7 +21,7 @@ const RefreshSwitchButton = GObject.registerClass(
                 gicon: new Gio.ThemedIcon({name: 'video-display-symbolic'}),
                 style_class: 'system-status-icon'
             });
-            this.actor.add_child(icon);
+            this.add_child(icon);
         }
 
         vfunc_event(event) {
