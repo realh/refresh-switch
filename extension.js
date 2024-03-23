@@ -14,8 +14,9 @@ const APPID = "uk.co.realh.refresh_switch";
 const RefreshSwitchButton = GObject.registerClass(
     {GTypeName: "RefreshSwitchButton"},
     class RefreshSwitchButton extends Button {
-        _init(indicatorName) {
+        _init(indicatorName, extension) {
             super._init(0, indicatorName, true);
+            this.extension = extension;
             let icon = new St.Icon({
                 gicon: new Gio.ThemedIcon({name: 'video-display-symbolic'}),
                 style_class: 'system-status-icon'
@@ -26,8 +27,8 @@ const RefreshSwitchButton = GObject.registerClass(
         vfunc_event(event) {
             if ((event.type() == Clutter.EventType.TOUCH_BEGIN ||
                 event.type() == Clutter.EventType.BUTTON_PRESS)) {
-                log("Got click event");
-                runApplet();
+                console.debug("Got click event");
+                this.extension.runApplet();
             }
 
             return Clutter.EVENT_PROPAGATE;
@@ -53,7 +54,7 @@ export default class FixFullscreenTearingExtension extends Extension {
     };
 
     enable() {
-        this.indicator = new RefreshSwitchButton(this.indicatorName);
+        this.indicator = new RefreshSwitchButton(this.indicatorName, this);
         panel.addToStatusArea(this.indicatorName, this.indicator);
     }
 
@@ -62,21 +63,21 @@ export default class FixFullscreenTearingExtension extends Extension {
             this.indicator.destroy();
             this.indicator = null;
         }
-        quitApplet();
+        this.quitApplet();
     }
 
     // GNOME needs a desktop file to be able to show a nice app name and icon
     // in the top bar.
     runApplet() {
         const path = this.get_app_path();
-        log("app_path: " + path);
+        console.debug("app_path: " + path);
         let appInfo = Gio.DesktopAppInfo.new(`${APPID}`);
         if (appInfo) {
             const exec = GLib.canonicalize_filename(appInfo.get_string("Exec"),
                 null);
             if (exec != path)
             {
-                log(`Doesn't match exec ${exec}`);
+                console.debug(`Doesn't match exec ${exec}`);
                 appInfo = null;
             }
         }
@@ -85,7 +86,7 @@ export default class FixFullscreenTearingExtension extends Extension {
         if (!appInfo) {
             const dtf = GLib.get_user_data_dir() +
                 `/applications/${APPID}.desktop`;
-            log("Creating " + dtf);
+            console.debug("Creating " + dtf);
             GLib.file_set_contents(dtf,
                 `[Desktop Entry]
 Name=RefreshSwitch
@@ -95,11 +96,11 @@ Icon=video-display-symbolic
 Exec=${path}
 `);
             appInfo = Gio.DesktopAppInfo.new_from_filename(dtf);
-            log("made new appInfo; ");
+            console.debug("made new appInfo; ");
         }
-        const lc = Global.get().create_app_launch_context(0, -1);
+        const lc = global.create_app_launch_context(0, -1);
         appInfo.launch([], lc);
-        log("Launched");
+        console.debug("Launched");
     }
 
     // We don't need to use the desktop file when quitting.
