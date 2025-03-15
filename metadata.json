@@ -2,7 +2,7 @@
     "uuid": "refresh-switch@realh.co.uk",
     "name": "Refresh Rate Quick Switcher",
     "description": "Makes it quicker and easier to change a display's refresh rate",
-    "version": 4,
-    "shell-version": [ "45", "46" ],
+    "version": 5,
+    "shell-version": [ "45", "46", "47" ],
     "url": "https://github.com/realh/refresh-switch"
 }
